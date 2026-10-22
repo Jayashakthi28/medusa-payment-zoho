@@ -1,0 +1,5 @@
+allowBuilds:
+  esbuild: true
+  "@medusajs/telemetry": false
+  msgpackr-extract: false
+  protobufjs: false

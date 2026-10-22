@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+npm-debug.log*
+pnpm-debug.log*
+*.tgz
+graphify-out/graph.html
+graphify-out/obsidian/
+graphify-out/.graphify_*
+graphify-out/cache/
