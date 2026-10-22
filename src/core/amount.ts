@@ -60,6 +60,40 @@ export function getCurrencySymbol(
   }
 }
 
+type Decimal = NonNullable<BigNumber["bigNumber"]>
+
+/**
+ * Convert an amount to a finite decimal.
+ *
+ * `BigNumber` silently represents malformed strings as `NaN` and accepts
+ * `"Infinity"`, both of which would otherwise reach Zoho as an amount. A generic
+ * constructor error is also converted to a typed error so callers never receive an
+ * untyped failure from a payment boundary.
+ */
+function toFiniteDecimal(amount: BigNumberInput): Decimal {
+  let value: BigNumber
+
+  try {
+    value = new BigNumber(amount)
+  } catch (error) {
+    throw new ZohoValidationError("Unable to format payment amount", {
+      cause: error,
+    })
+  }
+
+  const decimal = value.bigNumber
+
+  if (!decimal) {
+    throw new ZohoValidationError("Unable to format payment amount")
+  }
+
+  if (decimal.isNaN() || !decimal.isFinite()) {
+    throw new ZohoValidationError("Unable to format payment amount")
+  }
+
+  return decimal
+}
+
 /**
  * Format a Medusa amount (major units) as the decimal string Zoho expects.
  *
@@ -72,14 +106,17 @@ export function formatAmountForZoho(
   currencyCode: string
 ): string {
   const digits = getCurrencyFractionDigits(currencyCode)
-  const value = new BigNumber(amount)
-  const decimal = value.bigNumber
 
-  if (!decimal) {
-    throw new ZohoValidationError("Unable to format payment amount")
+  const decimal = toFiniteDecimal(amount)
+  const formatted = decimal.toFixed(digits)
+
+  if (decimal.gt(0) && !toFiniteDecimal(formatted).gt(0)) {
+    throw new ZohoValidationError(
+      `Amount ${decimal.toString()} is smaller than the supported precision for ${normalizeCurrencyCode(currencyCode)}`
+    )
   }
 
-  return decimal.toFixed(digits)
+  return formatted
 }
 
 /** Format an already-decimal amount string for Zoho. */
@@ -92,5 +129,5 @@ export function formatAmountStringForZoho(
 
 /** True when the amount is strictly greater than zero. */
 export function isPositiveAmount(amount: BigNumberInput): boolean {
-  return new BigNumber(amount).numeric > 0
+  return toFiniteDecimal(amount).gt(0)
 }

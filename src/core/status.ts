@@ -7,8 +7,9 @@ export function mapZohoSessionStatus(status: string | undefined): PaymentSession
   switch (normalized) {
     case "succeeded":
       return PaymentSessionStatus.CAPTURED
-    case "pending":
     case "created":
+      return PaymentSessionStatus.PENDING
+    case "pending":
     case "in_progress":
     case "processing":
       return PaymentSessionStatus.PENDING_AUTHORIZATION

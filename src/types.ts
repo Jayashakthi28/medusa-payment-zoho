@@ -48,6 +48,8 @@ export interface ZohoPaymentSessionData extends Record<string, unknown> {
   currencySymbol: string
   /** Description shown to the customer. */
   description: string
+  /** Business name displayed by the Zoho widget, when configured. */
+  businessName?: string
   /** Invoice number sent to Zoho (max 50 chars). */
   invoiceNumber: string
   /** Unix epoch milliseconds after which the Zoho session is invalid. */
@@ -91,7 +93,7 @@ export interface ZohoWidgetPaymentInput {
   invoiceNumber?: string
   /** Override the Zoho widget script URL (for CSP/self-hosting). */
   scriptUrl?: string
-  /** Maximum time to wait for the script and the widget, in milliseconds. */
+  /** Maximum time to wait for the Zoho widget script to load, in milliseconds. */
   timeoutMs?: number
 }
 

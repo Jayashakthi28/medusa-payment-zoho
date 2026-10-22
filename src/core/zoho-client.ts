@@ -43,6 +43,16 @@ function requireRecord(value: unknown, resource: string): JsonRecord {
   return value
 }
 
+function toZohoNumber(amount: string): number {
+  const value = Number(amount)
+
+  if (!Number.isFinite(value)) {
+    throw new ZohoValidationError(`Invalid Zoho amount: "${amount}"`)
+  }
+
+  return value
+}
+
 function requireString(
   resource: JsonRecord,
   key: string,
@@ -100,7 +110,7 @@ export class ZohoPaymentsClient implements ZohoPaymentsClientLike {
     input: CreateZohoPaymentSessionInput
   ): Promise<ZohoPaymentSession> {
     const body: JsonRecord = {
-      amount: input.amount,
+      amount: toZohoNumber(input.amount),
       currency: input.currency,
       description: input.description,
       invoice_number: input.invoiceNumber,
@@ -210,7 +220,7 @@ export class ZohoPaymentsClient implements ZohoPaymentsClientLike {
     }
 
     const body: JsonRecord = {
-      amount: input.amount,
+      amount: toZohoNumber(input.amount),
       reason: "requested_by_customer",
       type: "initiated_by_merchant",
     }

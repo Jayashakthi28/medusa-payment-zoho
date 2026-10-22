@@ -93,12 +93,59 @@ function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500
 }
 
+const RETRYABLE_SOCKET_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "EPIPE",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "UND_ERR_SOCKET",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+])
+
 function isNetworkError(error: unknown): boolean {
-  return (
+  if (
     error instanceof TypeError ||
     (error instanceof Error &&
       (error.name === "AbortError" || error.name === "TimeoutError"))
-  )
+  ) {
+    return true
+  }
+
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = error.code
+    return typeof code === "string" && RETRYABLE_SOCKET_CODES.has(code)
+  }
+
+  return false
+}
+
+const REDACTED = "[redacted]"
+
+/**
+ * Remove configured credentials from untrusted text before it reaches a log, a
+ * thrown error, or an error cause.
+ */
+function redactSecrets(value: string, secrets: readonly string[]): string {
+  let redacted = value
+
+  for (const secret of secrets) {
+    if (secret.length > 0) {
+      redacted = redacted.split(secret).join(REDACTED)
+    }
+  }
+
+  return redacted
+}
+
+function computeUsableLifetime(lifetimeSeconds: number): number {
+  // A fixed safety window would outlive a token issued for less than two minutes.
+  const safetyWindow = Math.min(TOKEN_EXPIRY_SAFETY_SECONDS, lifetimeSeconds / 2)
+
+  return lifetimeSeconds - safetyWindow
 }
 
 function defaultSleep(milliseconds: number): Promise<void> {
@@ -227,32 +274,49 @@ export class ZohoAccessTokenProvider implements AccessTokenProvider {
       )
     }
 
-    const text = await response.text().catch(() => "")
+    const text = await this.readTokenResponse(response)
     const payload = parseJsonObject(text)
     const accessToken = asNonEmptyString(payload?.access_token)
+    const secrets = [this.options.clientSecret, this.options.refreshToken]
 
     if (!response.ok || !accessToken) {
-      const description =
+      const description = redactSecrets(
         asNonEmptyString(payload?.error_description) ??
-        asNonEmptyString(payload?.error) ??
-        `HTTP ${response.status}`
+          asNonEmptyString(payload?.error) ??
+          `HTTP ${response.status}`,
+        secrets
+      )
 
       throw new ZohoAuthenticationError(
         `Zoho OAuth token refresh failed: ${description}`,
         {
           retryable: isRetryableStatus(response.status),
-          cause: errorFromTokenResponse(response, payload),
+          cause: errorFromTokenResponse(response, payload, this.now(), secrets),
         }
       )
     }
 
     const lifetime =
       asPositiveNumber(payload?.expires_in) ?? DEFAULT_TOKEN_LIFETIME_SECONDS
-    const usableLifetime = Math.max(lifetime - TOKEN_EXPIRY_SAFETY_SECONDS, 10)
+    const usableLifetime = computeUsableLifetime(lifetime)
 
     return {
       accessToken,
       expiresAt: this.now() + usableLifetime * 1000,
+    }
+  }
+
+  private async readTokenResponse(response: Response): Promise<string> {
+    try {
+      return await response.text()
+    } catch (error) {
+      throw new ZohoAuthenticationError(
+        "Unable to read the Zoho OAuth token response",
+        {
+          retryable: isNetworkError(error),
+          cause: error,
+        }
+      )
     }
   }
 }
@@ -263,23 +327,21 @@ function ensureTrailingSlash(value: string): string {
 
 function errorFromTokenResponse(
   response: Response,
-  payload: TokenResponse | undefined
+  payload: TokenResponse | undefined,
+  now: number,
+  secrets: readonly string[]
 ): Error {
   const code = asNonEmptyString(payload?.error)
   const description = asNonEmptyString(payload?.error_description)
-  const retryAfter = getRetryAfterMilliseconds(
-    response.headers.get("retry-after"),
-    Date.now()
-  )
+  const retryAfter = getRetryAfterMilliseconds(response.headers.get("retry-after"), now)
+  const message = [
+    `Zoho OAuth HTTP ${response.status}`,
+    code ? `code=${code}` : undefined,
+    description ? `description=${description}` : undefined,
+    retryAfter === undefined ? undefined : `retryAfterMs=${retryAfter}`,
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join("; ")
 
-  return new Error(
-    [
-      `Zoho OAuth HTTP ${response.status}`,
-      code ? `code=${code}` : undefined,
-      description ? `description=${description}` : undefined,
-      retryAfter === undefined ? undefined : `retryAfterMs=${retryAfter}`,
-    ]
-      .filter((part): part is string => part !== undefined)
-      .join("; ")
-  )
+  return new Error(redactSecrets(message, secrets))
 }

@@ -15,24 +15,44 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./providers/zoho": {
-      "types": "./dist/providers/zoho/index.d.ts",
-      "import": "./dist/providers/zoho/index.js",
-      "require": "./dist/providers/zoho/index.cjs"
+      "import": {
+        "types": "./dist/providers/zoho/index.d.ts",
+        "default": "./dist/providers/zoho/index.js"
+      },
+      "require": {
+        "types": "./dist/providers/zoho/index.d.cts",
+        "default": "./dist/providers/zoho/index.cjs"
+      }
     },
     "./client": {
-      "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.js",
-      "require": "./dist/client/index.cjs"
+      "import": {
+        "types": "./dist/client/index.d.ts",
+        "default": "./dist/client/index.js"
+      },
+      "require": {
+        "types": "./dist/client/index.d.cts",
+        "default": "./dist/client/index.cjs"
+      }
     },
     "./server": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js",
-      "require": "./dist/server/index.cjs"
+      "import": {
+        "types": "./dist/server/index.d.ts",
+        "default": "./dist/server/index.js"
+      },
+      "require": {
+        "types": "./dist/server/index.d.cts",
+        "default": "./dist/server/index.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -45,7 +65,7 @@
     "SECURITY.md"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/patch-cjs-provider.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -54,7 +74,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "pack:check": "npm pack --dry-run && publint && attw --pack .",
+    "pack:check": "npm pack --dry-run && publint && attw --pack . --profile node16",
     "verify:package": "node scripts/verify-package.mjs",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test:coverage && pnpm build && pnpm pack:check && pnpm verify:package",
     "prepublishOnly": "pnpm check"
@@ -92,14 +112,16 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@medusajs/framework": ">=2.16.0 <3.0.0",
-    "@medusajs/medusa": ">=2.16.0 <3.0.0"
+    "@medusajs/framework": ">=2.17.2 <3.0.0",
+    "@medusajs/medusa": ">=2.17.2 <3.0.0",
+    "@medusajs/types": ">=2.17.2 <3.0.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^9.39.5",
     "@medusajs/framework": "2.22.0",
     "@medusajs/medusa": "2.22.0",
+    "@medusajs/types": "2.22.0",
     "@types/node": "^22.20.5",
     "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^9.39.5",

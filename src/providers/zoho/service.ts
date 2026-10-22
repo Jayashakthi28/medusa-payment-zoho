@@ -22,6 +22,7 @@ import type {
 } from "@medusajs/framework/types"
 import {
   AbstractPaymentProvider,
+  BigNumber,
   MedusaError,
   PaymentSessionStatus,
 } from "@medusajs/framework/utils"
@@ -39,6 +40,7 @@ import {
   ZohoPaymentStateError,
   ZohoUnsupportedOperationError,
   ZohoValidationError,
+  ZohoWebhookVerificationError,
   getErrorMessage,
 } from "../../core/errors"
 import { toPaymentLogger } from "../../core/logger"
@@ -54,10 +56,12 @@ import { resolveZohoPaymentOptions, validateZohoPaymentOptions } from "./options
 import {
   buildZohoMetadataEntries,
   buildZohoSessionData,
+  findZohoMetadataValue,
   isReusableZohoSession,
   MEDUSA_SESSION_ID_METADATA_KEY,
   normalizeZohoExpiryTime,
   parseZohoSessionData,
+  stripProviderOwnedSessionData,
   type ZohoSessionDataView,
 } from "./session-data"
 import type {
@@ -99,6 +103,46 @@ function readMedusaSessionId(
 ): string | undefined {
   const value = data?.session_id
   return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+function readIdempotencyKey(
+  context: { idempotency_key?: string } | undefined
+): string | undefined {
+  const value = context?.idempotency_key
+  return typeof value === "string" && value.length > 0 ? value : undefined
+}
+
+/**
+ * Explicitly clear provider-owned payment state when a new Zoho session is created.
+ *
+ * Medusa merges the provider's output over the storefront-supplied `data`; setting
+ * these keys to `undefined` prevents a caller from carrying a prior payment ID into a
+ * fresh session. They are dropped during JSON serialization.
+ */
+function clearedPaymentState(): Record<string, unknown> {
+  return {
+    paymentId: undefined,
+    paymentStatus: undefined,
+    lastRefundId: undefined,
+    lastRefundStatus: undefined,
+    lastRefundIdempotencyKey: undefined,
+  }
+}
+
+type ComparableAmount = NonNullable<BigNumber["bigNumber"]>
+
+function parseComparableAmount(value: string): ComparableAmount {
+  try {
+    const amount = new BigNumber(value).bigNumber
+
+    if (!amount || amount.isNaN() || !amount.isFinite()) {
+      throw new Error("Amount is not a finite decimal")
+    }
+
+    return amount
+  } catch (error) {
+    throw new ZohoValidationError("Invalid payment amount", { cause: error })
+  }
 }
 
 function truncate(value: string, length: number): string {
@@ -157,95 +201,7 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
 
   async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
     try {
-      const currencyCode = normalizeCurrencyCode(input.currency_code)
-      const amount = formatAmountForZoho(input.amount, currencyCode)
-
-      if (!isPositiveAmount(input.amount)) {
-        throw new ZohoValidationError(
-          "Zoho Payments requires a payment amount greater than zero"
-        )
-      }
-
-      const existing = parseZohoSessionData(input.data)
-      const reusableSessionId = existing.zohoSessionId
-
-      if (
-        reusableSessionId &&
-        isReusableZohoSession(
-          existing,
-          amount,
-          currencyCode,
-          this.zohoConfig.checkoutMode,
-          this.now()
-        )
-      ) {
-        return {
-          id: reusableSessionId,
-          status: PaymentSessionStatus.PENDING,
-          data: mergeSessionData(input.data, existing),
-        }
-      }
-
-      const medusaSessionId = readMedusaSessionId(input.data)
-      const description = this.zohoConfig.paymentDescription || "Medusa order payment"
-      const session = await this.client.createPaymentSession({
-        amount,
-        currency: currencyCode,
-        description,
-        invoiceNumber: truncate(medusaSessionId ?? `zoho_${this.now()}`, 50),
-        referenceNumber: medusaSessionId ? truncate(medusaSessionId, 50) : undefined,
-        metadata: buildZohoMetadataEntries(this.zohoConfig.metadata, medusaSessionId),
-        allowedPaymentMethods: this.zohoConfig.allowedPaymentMethods,
-        hostedCheckout:
-          this.zohoConfig.checkoutMode === "hosted"
-            ? {
-                ...this.getHostedCheckoutUrls(),
-                email: input.context?.customer?.email,
-                phone: input.context?.customer?.phone ?? undefined,
-                description,
-              }
-            : undefined,
-      })
-
-      const expiresAt = normalizeZohoExpiryTime(session.expiry_time, this.now())
-      const widget =
-        this.zohoConfig.checkoutMode === "widget"
-          ? {
-              accountId: this.zohoConfig.accountId,
-              domain: this.zohoConfig.regionConfig.widgetDomain,
-              apiKey: this.getWidgetApiKey(),
-            }
-          : undefined
-      const checkoutUrl =
-        this.zohoConfig.checkoutMode === "hosted"
-          ? this.buildHostedCheckoutUrl(session)
-          : undefined
-
-      const sessionData = buildZohoSessionData({
-        zohoSessionId: session.payments_session_id,
-        checkoutMode: this.zohoConfig.checkoutMode,
-        amount,
-        currencyCode,
-        currencySymbol: getCurrencySymbol(
-          currencyCode,
-          this.zohoConfig.currencySymbols
-        ),
-        description,
-        invoiceNumber: truncate(medusaSessionId ?? `zoho_${this.now()}`, 50),
-        expiresAt,
-        medusaSessionId,
-        widget,
-        checkoutUrl,
-        previousZohoSessionIds: existing.zohoSessionId
-          ? [...(existing.previousZohoSessionIds ?? []), existing.zohoSessionId]
-          : existing.previousZohoSessionIds,
-      })
-
-      return {
-        id: session.payments_session_id,
-        status: PaymentSessionStatus.PENDING,
-        data: { ...input.data, ...sessionData },
-      }
+      return await this.createZohoSession(input)
     } catch (error) {
       throw this.toMedusaError(error, "initiate payment")
     }
@@ -255,7 +211,7 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
     try {
       const existing = parseZohoSessionData(input.data)
 
-      if (existing.paymentId) {
+      if (existing.paymentId || isCapturedPaymentStatus(existing.paymentStatus)) {
         throw new ZohoPaymentStateError(
           "Cannot update a Zoho payment session after payment"
         )
@@ -279,14 +235,99 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
         }
       }
 
-      const initiated = await this.initiatePayment(input)
+      const initiated = await this.createZohoSession(input, existing)
 
+      // A newly initiated Zoho session is always pending.
       return {
-        status: initiated.status ?? PaymentSessionStatus.PENDING,
+        status: PaymentSessionStatus.PENDING,
         data: initiated.data,
       }
     } catch (error) {
       throw this.toMedusaError(error, "update payment")
+    }
+  }
+
+  private async createZohoSession(
+    input: InitiatePaymentInput | UpdatePaymentInput,
+    previous?: ZohoSessionDataView
+  ): Promise<InitiatePaymentOutput> {
+    const currencyCode = normalizeCurrencyCode(input.currency_code)
+    const amount = formatAmountForZoho(input.amount, currencyCode)
+
+    if (!isPositiveAmount(input.amount)) {
+      throw new ZohoValidationError(
+        "Zoho Payments requires a payment amount greater than zero"
+      )
+    }
+
+    // Medusa accepts arbitrary `data` from the storefront. Only Medusa's injected
+    // `session_id` is preserved; provider-owned fields are rebuilt server-side.
+    const safeInputData = stripProviderOwnedSessionData(input.data)
+    const medusaSessionId =
+      readIdempotencyKey(input.context) ??
+      readMedusaSessionId(safeInputData) ??
+      previous?.medusaSessionId
+    const description = this.zohoConfig.paymentDescription
+    const invoiceNumber = truncate(medusaSessionId ?? `zoho_${this.now()}`, 50)
+    const session = await this.client.createPaymentSession({
+      amount,
+      currency: currencyCode,
+      description,
+      invoiceNumber,
+      referenceNumber: medusaSessionId ? truncate(medusaSessionId, 50) : undefined,
+      metadata: buildZohoMetadataEntries(this.zohoConfig.metadata, medusaSessionId),
+      allowedPaymentMethods: this.zohoConfig.allowedPaymentMethods,
+      hostedCheckout:
+        this.zohoConfig.checkoutMode === "hosted"
+          ? {
+              ...this.getHostedCheckoutUrls(),
+              email: input.context?.customer?.email,
+              phone: input.context?.customer?.phone ?? undefined,
+              description,
+            }
+          : undefined,
+    })
+
+    const expiresAt = normalizeZohoExpiryTime(session.expiry_time, this.now())
+    const widget =
+      this.zohoConfig.checkoutMode === "widget"
+        ? {
+            accountId: this.zohoConfig.accountId,
+            domain: this.zohoConfig.regionConfig.widgetDomain,
+            apiKey: this.getWidgetApiKey(),
+          }
+        : undefined
+    const checkoutUrl =
+      this.zohoConfig.checkoutMode === "hosted"
+        ? this.buildHostedCheckoutUrl(session)
+        : undefined
+
+    const sessionData = buildZohoSessionData({
+      zohoSessionId: session.payments_session_id,
+      checkoutMode: this.zohoConfig.checkoutMode,
+      amount,
+      currencyCode,
+      currencySymbol: getCurrencySymbol(currencyCode, this.zohoConfig.currencySymbols),
+      description,
+      businessName: this.zohoConfig.businessName,
+      invoiceNumber,
+      expiresAt,
+      medusaSessionId,
+      widget,
+      checkoutUrl,
+      previousZohoSessionIds: previous?.zohoSessionId
+        ? [...(previous.previousZohoSessionIds ?? []), previous.zohoSessionId]
+        : previous?.previousZohoSessionIds,
+    })
+
+    return {
+      id: session.payments_session_id,
+      status: PaymentSessionStatus.PENDING,
+      data: {
+        ...safeInputData,
+        ...sessionData,
+        ...clearedPaymentState(),
+      },
     }
   }
 
@@ -301,9 +342,18 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
   ): Promise<AuthorizePaymentOutput> {
     try {
       const sessionData = parseZohoSessionData(input.data)
+      const expectedSessionId = this.getExpectedMedusaSessionId(
+        input.context,
+        sessionData
+      )
 
       if (sessionData.paymentId) {
-        return await this.resolvePaymentAuthorization(sessionData.paymentId, input.data)
+        return await this.resolvePaymentAuthorization(
+          sessionData.paymentId,
+          input.data,
+          expectedSessionId,
+          sessionData
+        )
       }
 
       if (!sessionData.zohoSessionId) {
@@ -313,6 +363,16 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
       }
 
       const session = await this.retrieveSessionWithPolling(sessionData.zohoSessionId)
+
+      if (expectedSessionId) {
+        this.assertMedusaSessionOwnership(
+          session,
+          expectedSessionId,
+          "Zoho payment session"
+        )
+      }
+
+      this.assertAmountAndCurrency(session, sessionData, "Zoho payment session")
 
       return this.toAuthorizeOutput(session, input.data)
     } catch (error) {
@@ -332,6 +392,16 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
       }
 
       const payment = await this.client.retrievePayment(paymentId)
+
+      this.assertAmountAndCurrency(payment, sessionData, "Zoho payment")
+
+      if (sessionData.medusaSessionId) {
+        this.assertMedusaSessionOwnership(
+          payment,
+          sessionData.medusaSessionId,
+          "Zoho payment"
+        )
+      }
 
       if (isCapturedPaymentStatus(payment.status)) {
         return {
@@ -402,19 +472,45 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
       }
 
       const idempotencyKey = input.context?.idempotency_key
+      const previousRefundStatus = sessionData.lastRefundStatus?.toLowerCase()
+      const canReplayPreviousRefund =
+        previousRefundStatus !== "failed" && previousRefundStatus !== "canceled"
 
       if (
         idempotencyKey &&
         sessionData.lastRefundIdempotencyKey === idempotencyKey &&
-        sessionData.lastRefundId
+        sessionData.lastRefundId &&
+        canReplayPreviousRefund
       ) {
         return { data: input.data }
       }
 
-      const currencyCode =
-        sessionData.currencyCode ??
-        (await this.client.retrievePayment(paymentId)).currency
-      const amount = formatAmountForZoho(input.amount, currencyCode)
+      // Always resolve the currency and captured amount from Zoho, never from
+      // client-influenced session data.
+      const payment = await this.client.retrievePayment(paymentId)
+
+      if (!isCapturedPaymentStatus(payment.status)) {
+        throw new ZohoPaymentStateError(
+          `Cannot refund Zoho payment in status "${payment.status}"`
+        )
+      }
+
+      if (sessionData.medusaSessionId) {
+        this.assertMedusaSessionOwnership(
+          payment,
+          sessionData.medusaSessionId,
+          "Zoho payment"
+        )
+      }
+
+      const amount = formatAmountForZoho(input.amount, payment.currency)
+
+      if (parseComparableAmount(amount).gt(payment.amount)) {
+        throw new ZohoValidationError(
+          "Zoho refund amount exceeds the captured payment amount"
+        )
+      }
+
       const metadata = sessionData.medusaSessionId
         ? [
             {
@@ -430,15 +526,31 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
         metadata,
       })
 
-      if (refund.status.toLowerCase() === "failed") {
+      const refundStatus = refund.status.toLowerCase()
+
+      if (refundStatus === "failed" || refundStatus === "canceled") {
         throw new ZohoPaymentStateError(
-          `Zoho refund failed${refund.failure_reason ? `: ${refund.failure_reason}` : ""}`
+          `Zoho refund ${refundStatus}${refund.failure_reason ? `: ${refund.failure_reason}` : ""}`
         )
       }
 
+      if (refundStatus === "pending" || refundStatus === "initiated") {
+        this.logger.warn("Zoho refund is asynchronous", {
+          paymentId,
+          refundId: refund.refund_id,
+          status: refund.status,
+        })
+      }
+
+      const existingData: Record<string, unknown> = { ...input.data }
+
+      // An unkeyed refund must not leave the previous refund's key behind: a
+      // later retry with that key would otherwise replay the newer refund.
+      delete existingData.lastRefundIdempotencyKey
+
       return {
         data: {
-          ...input.data,
+          ...existingData,
           paymentId,
           lastRefundId: refund.refund_id,
           lastRefundStatus: refund.status,
@@ -483,8 +595,18 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
     try {
       const sessionData = parseZohoSessionData(input.data)
 
+      const expectedSessionId =
+        readIdempotencyKey(input.context) ?? sessionData.medusaSessionId
+
       if (sessionData.paymentId) {
         const payment = await this.client.retrievePayment(sessionData.paymentId)
+
+        if (expectedSessionId) {
+          this.assertMedusaSessionOwnership(payment, expectedSessionId, "Zoho payment")
+        }
+
+        this.assertAmountAndCurrency(payment, sessionData, "Zoho payment")
+
         return {
           status: mapZohoPaymentStatus(payment.status),
           data: this.mergePaymentData(input.data, payment),
@@ -501,6 +623,16 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
       const session = await this.client.retrievePaymentSession(
         sessionData.zohoSessionId
       )
+
+      if (expectedSessionId) {
+        this.assertMedusaSessionOwnership(
+          session,
+          expectedSessionId,
+          "Zoho payment session"
+        )
+      }
+
+      this.assertAmountAndCurrency(session, sessionData, "Zoho payment session")
 
       return {
         status: mapZohoSessionStatus(session.status),
@@ -552,13 +684,20 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
 
   private async resolvePaymentAuthorization(
     paymentId: string,
-    raw: Record<string, unknown> | undefined
+    raw: Record<string, unknown> | undefined,
+    expectedSessionId: string | undefined,
+    sessionData: ZohoSessionDataView
   ): Promise<AuthorizePaymentOutput> {
     const payment = await this.client.retrievePayment(paymentId)
-    const status = mapZohoPaymentStatus(payment.status)
+
+    if (expectedSessionId) {
+      this.assertMedusaSessionOwnership(payment, expectedSessionId, "Zoho payment")
+    }
+
+    this.assertAmountAndCurrency(payment, sessionData, "Zoho payment")
 
     return {
-      status,
+      status: mapZohoPaymentStatus(payment.status),
       data: this.mergePaymentData(raw, payment),
     }
   }
@@ -583,6 +722,59 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
         ...(paymentId ? { paymentId } : {}),
         paymentStatus: session.status,
       },
+    }
+  }
+
+  private getExpectedMedusaSessionId(
+    context: { idempotency_key?: string } | undefined,
+    sessionData: ZohoSessionDataView
+  ): string | undefined {
+    return readIdempotencyKey(context) ?? sessionData.medusaSessionId
+  }
+
+  private assertMedusaSessionOwnership(
+    resource: {
+      reference_number?: string
+      meta_data?: { key: string; value: string }[]
+    },
+    expectedSessionId: string,
+    resourceName: string
+  ): void {
+    const metadataSessionId = findZohoMetadataValue(
+      resource.meta_data,
+      MEDUSA_SESSION_ID_METADATA_KEY
+    )
+    const referenceNumber = resource.reference_number
+
+    if (
+      metadataSessionId !== expectedSessionId &&
+      referenceNumber !== expectedSessionId
+    ) {
+      throw new ZohoPaymentStateError(
+        `${resourceName} does not belong to the current Medusa payment session`
+      )
+    }
+  }
+
+  private assertAmountAndCurrency(
+    resource: { amount?: string; currency?: string },
+    sessionData: ZohoSessionDataView,
+    resourceName: string
+  ): void {
+    if (!sessionData.amount || !sessionData.currencyCode) {
+      return
+    }
+
+    const actualAmount = parseComparableAmount(resource.amount ?? "")
+
+    if (
+      !actualAmount.eq(sessionData.amount) ||
+      !resource.currency ||
+      normalizeCurrencyCode(resource.currency) !== sessionData.currencyCode
+    ) {
+      throw new ZohoPaymentStateError(
+        `${resourceName} amount or currency does not match the Medusa payment session`
+      )
     }
   }
 
@@ -648,7 +840,8 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
 
     if (
       error instanceof ZohoValidationError ||
-      error instanceof ZohoConfigurationError
+      error instanceof ZohoConfigurationError ||
+      error instanceof ZohoWebhookVerificationError
     ) {
       return new MedusaError(MedusaError.Types.INVALID_DATA, message)
     }

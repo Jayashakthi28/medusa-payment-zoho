@@ -36,6 +36,11 @@ export interface ZohoHostedCheckoutSignatureInput {
   paymentId?: string
   paymentStatus?: string
   amount?: string
+  /**
+   * India returns include `mandate_id` in the signed message. US returns omit it;
+   * when this value is absent the verifier accepts either official layout.
+   */
+  mandateId?: string
   udf1?: string
   udf2?: string
   udf3?: string
@@ -57,7 +62,8 @@ function hmacSha256Hex(message: string, signingKey: string): string {
 }
 
 function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length || left.length === 0) {
+  // An empty signature must never validate, even if both sides are empty.
+  if (left.length !== right.length || right.length === 0) {
     return false
   }
 
@@ -196,20 +202,26 @@ export function isValidZohoHostedCheckoutSignature(
 ): boolean {
   assertSigningKey(signingKey)
 
-  const message = [
+  const prefix = [
     input.paymentsSessionId,
     input.paymentSessionStatus,
     input.paymentId ?? "",
     input.paymentStatus ?? "",
     input.amount ?? "",
+  ]
+  const suffix = [
     input.udf1 ?? "",
     input.udf2 ?? "",
     input.udf3 ?? "",
     input.udf4 ?? "",
     input.udf5 ?? "",
-  ].join(".")
+  ]
+  const candidates =
+    input.mandateId === undefined
+      ? [[...prefix, "", ...suffix].join("."), [...prefix, ...suffix].join(".")]
+      : [[...prefix, input.mandateId, ...suffix].join(".")]
 
-  const expected = hmacSha256Hex(message, signingKey)
-
-  return constantTimeEqual(expected, input.signature)
+  return candidates.some((message) =>
+    constantTimeEqual(hmacSha256Hex(message, signingKey), input.signature)
+  )
 }

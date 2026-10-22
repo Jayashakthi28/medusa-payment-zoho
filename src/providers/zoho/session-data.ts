@@ -3,6 +3,8 @@ import type {
   ZohoPaymentSessionData,
   ZohoWidgetSessionConfig,
 } from "../../types"
+import { ZohoValidationError } from "../../core/errors"
+import { isCapturedPaymentStatus } from "../../core/status"
 import type { ZohoMetadataEntry } from "./types"
 
 /** Metadata key carrying the Medusa payment-session ID. */
@@ -13,6 +15,32 @@ export const ZOHO_SESSION_ID_METADATA_KEY = "zoho_session_id"
 const ZOHO_SESSION_SAFETY_WINDOW_MS = 60_000
 const MAX_ZOHO_METADATA_ENTRIES = 5
 
+/**
+ * Keys owned by the provider. Medusa accepts arbitrary `data` from the storefront when
+ * a payment session is initialized, so these keys must never be read from raw input or
+ * carried through from a caller: otherwise a customer could inject another payment's ID.
+ */
+const PROVIDER_OWNED_SESSION_KEYS = new Set([
+  "zohoSessionId",
+  "checkoutMode",
+  "amount",
+  "currencyCode",
+  "currencySymbol",
+  "description",
+  "businessName",
+  "invoiceNumber",
+  "expiresAt",
+  "widget",
+  "checkoutUrl",
+  "medusaSessionId",
+  "paymentId",
+  "paymentStatus",
+  "previousZohoSessionIds",
+  "lastRefundId",
+  "lastRefundStatus",
+  "lastRefundIdempotencyKey",
+])
+
 /** Validated, read-only view over untrusted session data. */
 export interface ZohoSessionDataView {
   zohoSessionId?: string
@@ -21,6 +49,7 @@ export interface ZohoSessionDataView {
   currencyCode?: string
   currencySymbol?: string
   description?: string
+  businessName?: string
   invoiceNumber?: string
   expiresAt?: number
   widget?: ZohoWidgetSessionConfig
@@ -92,6 +121,18 @@ function readWidgetConfig(
   return { accountId, domain, apiKey }
 }
 
+/**
+ * Remove every provider-owned key from untrusted input while preserving Medusa's
+ * injected `session_id` and any caller-defined custom data.
+ */
+export function stripProviderOwnedSessionData(
+  raw: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(raw ?? {}).filter(([key]) => !PROVIDER_OWNED_SESSION_KEYS.has(key))
+  )
+}
+
 /** Safely read the provider-owned fields from Medusa's payment-session data. */
 export function parseZohoSessionData(
   raw: Record<string, unknown> | undefined
@@ -105,6 +146,7 @@ export function parseZohoSessionData(
     currencyCode: readString(source, "currencyCode"),
     currencySymbol: readString(source, "currencySymbol"),
     description: readString(source, "description"),
+    businessName: readString(source, "businessName"),
     invoiceNumber: readString(source, "invoiceNumber"),
     expiresAt: readNumber(source, "expiresAt"),
     widget: readWidgetConfig(source),
@@ -138,7 +180,7 @@ export function buildZohoMetadataEntries(
   }
 
   if (entries.length > MAX_ZOHO_METADATA_ENTRIES) {
-    throw new Error(
+    throw new ZohoValidationError(
       `Zoho metadata supports at most ${MAX_ZOHO_METADATA_ENTRIES} entries`
     )
   }
@@ -159,12 +201,18 @@ export function extractMedusaSessionId(payment: {
   meta_data?: ZohoMetadataEntry[]
   reference_number?: string
 }): string | undefined {
-  return (
-    findZohoMetadataValue(payment.meta_data, MEDUSA_SESSION_ID_METADATA_KEY) ??
-    (payment.reference_number && payment.reference_number.length > 0
-      ? payment.reference_number
-      : undefined)
+  const metadataValue = findZohoMetadataValue(
+    payment.meta_data,
+    MEDUSA_SESSION_ID_METADATA_KEY
   )
+
+  if (metadataValue) {
+    return metadataValue
+  }
+
+  const reference = payment.reference_number
+
+  return typeof reference === "string" && reference.length > 0 ? reference : undefined
 }
 
 /** Resolve the Zoho session ID from a webhook payment object. */
@@ -172,10 +220,18 @@ export function extractZohoSessionId(payment: {
   payments_session_id?: string
   meta_data?: ZohoMetadataEntry[]
 }): string | undefined {
-  return (
-    payment.payments_session_id ??
-    findZohoMetadataValue(payment.meta_data, ZOHO_SESSION_ID_METADATA_KEY)
+  const sessionId = payment.payments_session_id
+
+  if (typeof sessionId === "string" && sessionId.length > 0) {
+    return sessionId
+  }
+
+  const metadataValue = findZohoMetadataValue(
+    payment.meta_data,
+    ZOHO_SESSION_ID_METADATA_KEY
   )
+
+  return metadataValue && metadataValue.length > 0 ? metadataValue : undefined
 }
 
 /**
@@ -191,6 +247,7 @@ export function isReusableZohoSession(
 ): boolean {
   return (
     !existing.paymentId &&
+    !isCapturedPaymentStatus(existing.paymentStatus) &&
     existing.zohoSessionId !== undefined &&
     existing.amount === amount &&
     existing.currencyCode === currencyCode &&
@@ -206,8 +263,17 @@ export function normalizeZohoExpiryTime(
   fallbackNow: number,
   fallbackSeconds = 900
 ): number {
-  if (expiryTime === undefined) {
-    return fallbackNow + fallbackSeconds * 1000
+  const fallback = fallbackNow + fallbackSeconds * 1000
+
+  // A non-finite or non-positive expiry would make the session look reusable
+  // forever (Infinity) or produce `null` when Medusa serializes NaN. Fall back to
+  // Zoho's documented 15-minute lifetime instead of persisting bad data.
+  if (
+    typeof expiryTime !== "number" ||
+    !Number.isFinite(expiryTime) ||
+    expiryTime <= 0
+  ) {
+    return fallback
   }
 
   return expiryTime > 1_000_000_000_000 ? expiryTime : expiryTime * 1000
@@ -221,6 +287,7 @@ export function buildZohoSessionData(input: {
   currencyCode: string
   currencySymbol: string
   description: string
+  businessName?: string
   invoiceNumber: string
   expiresAt: number
   medusaSessionId?: string
@@ -237,6 +304,7 @@ export function buildZohoSessionData(input: {
     description: input.description,
     invoiceNumber: input.invoiceNumber,
     expiresAt: input.expiresAt,
+    ...(input.businessName ? { businessName: input.businessName } : {}),
     ...(input.medusaSessionId ? { medusaSessionId: input.medusaSessionId } : {}),
     ...(input.widget ? { widget: input.widget } : {}),
     ...(input.checkoutUrl ? { checkoutUrl: input.checkoutUrl } : {}),

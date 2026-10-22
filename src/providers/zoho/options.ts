@@ -273,8 +273,20 @@ function resolveLogger(source: Record<string, unknown>): ZohoPaymentOptions["log
     return undefined
   }
 
-  if (typeof value !== "object" || value === null) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new ZohoConfigurationError('Zoho Payments option "logger" must be an object')
+  }
+
+  const logger = value as Record<string, unknown>
+
+  // A logger without all three methods would fail mid-payment, after Zoho has
+  // already been called. Reject it at startup instead.
+  for (const method of ["debug", "warn", "error"] as const) {
+    if (typeof logger[method] !== "function") {
+      throw new ZohoConfigurationError(
+        `Zoho Payments option "logger" must provide a ${method}() method`
+      )
+    }
   }
 
   return value as ZohoPaymentOptions["logger"]
@@ -308,7 +320,6 @@ export function resolveZohoPaymentOptions(
   }
 
   const region = regionValue
-  const regionConfig = resolveRegionConfig(region, source)
   const checkoutModeValue = optionalString(source, "checkoutMode") ?? "widget"
 
   if (checkoutModeValue !== "widget" && checkoutModeValue !== "hosted") {
@@ -340,9 +351,32 @@ export function resolveZohoPaymentOptions(
         'Zoho Payments option "failureUrl" is required when checkoutMode is "hosted"'
       )
     }
+  }
 
+  // Validate URLs whenever they are supplied, even in widget mode: a malformed
+  // value should fail at startup rather than after the merchant switches modes.
+  if (successUrl) {
     validateUrl("successUrl", successUrl)
+  }
+
+  if (failureUrl) {
     validateUrl("failureUrl", failureUrl)
+  }
+
+  const regionConfig = resolveRegionConfig(region, source)
+  const allowedPaymentMethods = resolveAllowedPaymentMethods(source)
+  const currencySymbols = resolveCurrencySymbols(source)
+  const metadata = resolveMetadata(source)
+
+  // The resolved options are treated as immutable by the provider, so freeze the
+  // nested collections too. A shallow freeze would still allow callers to mutate
+  // metadata or replace a region URL at runtime.
+  Object.freeze(regionConfig)
+  Object.freeze(currencySymbols)
+  Object.freeze(metadata)
+
+  if (allowedPaymentMethods) {
+    Object.freeze(allowedPaymentMethods)
   }
 
   const resolved: ResolvedZohoPaymentOptions = {
@@ -355,7 +389,7 @@ export function resolveZohoPaymentOptions(
     checkoutMode,
     apiKey,
     businessName: optionalString(source, "businessName", 100),
-    allowedPaymentMethods: resolveAllowedPaymentMethods(source),
+    allowedPaymentMethods,
     paymentDescription:
       optionalString(source, "paymentDescription", 500) ?? "Medusa order payment",
     successUrl,
@@ -374,8 +408,8 @@ export function resolveZohoPaymentOptions(
       0,
       86_400
     ),
-    currencySymbols: resolveCurrencySymbols(source),
-    metadata: resolveMetadata(source),
+    currencySymbols,
+    metadata,
     fetch: resolveFetch(source),
     logger: resolveLogger(source),
   }

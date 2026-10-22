@@ -64,6 +64,7 @@ export interface ZohoCheckoutSession {
   currencyCode: string
   currencySymbol: string
   description: string
+  businessName?: string
   invoiceNumber: string
   expiresAt?: number
   widget?: {
@@ -141,6 +142,7 @@ function parseCheckoutSession(session: Record<string, unknown>): ZohoCheckoutSes
     currencyCode,
     currencySymbol,
     description,
+    businessName: readString(session, "businessName"),
     invoiceNumber: invoiceNumber ?? "",
     expiresAt: readNumber(session, "expiresAt"),
     widget:
@@ -157,48 +159,27 @@ function parseCheckoutSession(session: Record<string, unknown>): ZohoCheckoutSes
 
 function waitForZohoGlobal(
   browserWindow: ZohoBrowserWindow,
-  script: HTMLScriptElement | null,
+  script: HTMLScriptElement,
   timeoutMs: number
 ): Promise<void> {
-  if (browserWindow.ZPayments) {
-    return Promise.resolve()
-  }
-
   return new Promise((resolve, reject) => {
-    let settled = false
     const handles: {
       interval?: ReturnType<typeof setInterval>
       timeout?: ReturnType<typeof setTimeout>
     } = {}
 
     const cleanup = (): void => {
-      if (handles.interval !== undefined) {
-        clearInterval(handles.interval)
-      }
-
-      if (handles.timeout !== undefined) {
-        clearTimeout(handles.timeout)
-      }
-
-      script?.removeEventListener("error", handleError)
+      clearInterval(handles.interval)
+      clearTimeout(handles.timeout)
+      script.removeEventListener("error", handleError)
     }
 
     const succeed = (): void => {
-      if (settled) {
-        return
-      }
-
-      settled = true
       cleanup()
       resolve()
     }
 
     const fail = (message: string): void => {
-      if (settled) {
-        return
-      }
-
-      settled = true
       cleanup()
       reject(new ZohoValidationError(message))
     }
@@ -207,7 +188,7 @@ function waitForZohoGlobal(
       fail("Failed to load the Zoho Checkout Widget script")
     }
 
-    script?.addEventListener("error", handleError, { once: true })
+    script.addEventListener("error", handleError, { once: true })
 
     handles.interval = setInterval(() => {
       if (browserWindow.ZPayments) {
@@ -221,6 +202,49 @@ function waitForZohoGlobal(
   })
 }
 
+/** Find a previously inserted tag for the exact URL, not just any Zoho tag. */
+function findExistingScript(scriptUrl: string): HTMLScriptElement | null {
+  const scripts = document.querySelectorAll<HTMLScriptElement>(
+    'script[data-zoho-payments="true"]'
+  )
+
+  for (const script of scripts) {
+    if (script.src === scriptUrl || script.getAttribute("src") === scriptUrl) {
+      return script
+    }
+  }
+
+  return null
+}
+
+function resolveScriptUrl(scriptUrl: string | undefined): string {
+  const value = scriptUrl ?? ZOHO_WIDGET_SCRIPT_URL
+  let parsed: URL
+
+  try {
+    parsed = new URL(value)
+  } catch (error) {
+    throw new ZohoValidationError("Invalid Zoho widget script URL", {
+      cause: error,
+    })
+  }
+
+  const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1"
+
+  if (
+    (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+    parsed.username.length > 0 ||
+    parsed.password.length > 0 ||
+    (parsed.protocol === "http:" && !isLocalhost)
+  ) {
+    throw new ZohoValidationError(
+      "Zoho widget script URL must use https (http is allowed only for localhost)"
+    )
+  }
+
+  return parsed.toString()
+}
+
 /** Load the Zoho widget script once, reusing an existing global or script tag. */
 export function loadZohoPaymentsScript(
   options: {
@@ -229,7 +253,7 @@ export function loadZohoPaymentsScript(
   } = {}
 ): Promise<void> {
   const browserWindow = getBrowserWindow()
-  const scriptUrl = options.scriptUrl ?? ZOHO_WIDGET_SCRIPT_URL
+  const scriptUrl = resolveScriptUrl(options.scriptUrl)
   const timeoutMs = options.timeoutMs ?? DEFAULT_SCRIPT_TIMEOUT_MS
 
   if (browserWindow.ZPayments) {
@@ -242,9 +266,7 @@ export function loadZohoPaymentsScript(
     return inFlight
   }
 
-  const existing =
-    document.querySelector<HTMLScriptElement>('script[data-zoho-payments="true"]') ??
-    null
+  const existing = findExistingScript(scriptUrl)
   const script = existing ?? document.createElement("script")
 
   if (!existing) {
@@ -257,6 +279,13 @@ export function loadZohoPaymentsScript(
   const promise = waitForZohoGlobal(browserWindow, script, timeoutMs).catch(
     (error: unknown) => {
       scriptPromises.delete(scriptUrl)
+
+      // A failed tag cannot emit a second load/error event, so leaving it in the
+      // DOM would make every retry wait on a script that can never recover.
+      if (!existing) {
+        script.remove()
+      }
+
       throw error
     }
   )
@@ -268,17 +297,11 @@ export function loadZohoPaymentsScript(
 
 function getWidgetInstance(
   browserWindow: ZohoBrowserWindow,
-  session: ZohoCheckoutSession
+  widget: NonNullable<ZohoCheckoutSession["widget"]>
 ): ZohoPaymentsInstance {
-  const widget = session.widget
+  const ZPayments = browserWindow.ZPayments
 
-  if (!widget) {
-    throw new ZohoValidationError(
-      "Zoho widget configuration is missing from the payment session"
-    )
-  }
-
-  if (!browserWindow.ZPayments) {
+  if (!ZPayments) {
     throw new ZohoValidationError("Zoho Checkout Widget script is not available")
   }
 
@@ -289,7 +312,7 @@ function getWidgetInstance(
     return cached
   }
 
-  const instance = new browserWindow.ZPayments({
+  const instance = new ZPayments({
     account_id: widget.accountId,
     domain: widget.domain,
     otherOptions: {
@@ -319,6 +342,10 @@ function buildWidgetOptions(
 
   if (invoiceNumber) {
     options.invoice_number = invoiceNumber
+  }
+
+  if (session.businessName) {
+    options.business = session.businessName
   }
 
   const address = buildAddress(input.customer)
@@ -411,7 +438,9 @@ export async function payWithZohoCheckout(
     return { ok: false, reason: "hosted_checkout_required" }
   }
 
-  if (!session.widget) {
+  const widget = session.widget
+
+  if (!widget) {
     return { ok: false, reason: "not_configured" }
   }
 
@@ -422,7 +451,7 @@ export async function payWithZohoCheckout(
     timeoutMs: input.timeoutMs,
   })
 
-  const instance = getWidgetInstance(browserWindow, session)
+  const instance = getWidgetInstance(browserWindow, widget)
 
   try {
     const response = await instance.requestPaymentMethod(

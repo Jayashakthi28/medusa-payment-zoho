@@ -92,12 +92,34 @@ function isRetryableStatus(status: number, retryPolicy: ZohoRetryPolicy): boolea
   return retryPolicy === "safe" && status >= 500
 }
 
+const RETRYABLE_SOCKET_CODES = new Set([
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "EPIPE",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "UND_ERR_SOCKET",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+])
+
 function isNetworkError(error: unknown): boolean {
-  return (
+  if (
     error instanceof TypeError ||
     (error instanceof Error &&
       (error.name === "AbortError" || error.name === "TimeoutError"))
-  )
+  ) {
+    return true
+  }
+
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = error.code
+    return typeof code === "string" && RETRYABLE_SOCKET_CODES.has(code)
+  }
+
+  return false
 }
 
 function defaultSleep(milliseconds: number): Promise<void> {
@@ -143,21 +165,20 @@ export class ZohoHttpClient {
   }
 
   async request<T>(request: ZohoHttpRequest): Promise<T> {
+    const retryPolicy = request.retryPolicy ?? "safe"
     let attempt = 0
     let authenticationRetried = false
 
     for (;;) {
       const accessToken = await this.options.tokenProvider.getAccessToken()
-      let response: Response
+      let sent: { response: Response; text: string }
 
       try {
-        response = await this.send(request, accessToken)
+        sent = await this.send(request, accessToken)
       } catch (error) {
-        if (
-          (request.retryPolicy ?? "safe") === "safe" &&
-          isNetworkError(error) &&
-          attempt < this.options.maxRetries
-        ) {
+        const retryable = retryPolicy === "safe" && isNetworkError(error)
+
+        if (retryable && attempt < this.options.maxRetries) {
           await this.waitBeforeRetry(attempt)
           attempt += 1
           continue
@@ -165,9 +186,11 @@ export class ZohoHttpClient {
 
         throw new ZohoApiError(
           `Zoho API request failed: ${request.method} /${request.path}`,
-          { retryable: isNetworkError(error), cause: error }
+          { retryable, cause: error }
         )
       }
+
+      const { response, text } = sent
 
       if (response.status === 401 && !authenticationRetried) {
         authenticationRetried = true
@@ -175,7 +198,6 @@ export class ZohoHttpClient {
         continue
       }
 
-      const text = await response.text().catch(() => "")
       const payload = parseJsonObject(text)
       const requestId =
         response.headers.get("x-zoho-request-id") ??
@@ -192,12 +214,12 @@ export class ZohoHttpClient {
           statusCode: response.status,
           zohoCode: getPayloadString(payload, "code"),
           requestId,
-          retryable: isRetryableStatus(response.status, request.retryPolicy ?? "safe"),
+          retryable: isRetryableStatus(response.status, retryPolicy),
         }
       )
 
       if (
-        isRetryableStatus(response.status, request.retryPolicy ?? "safe") &&
+        isRetryableStatus(response.status, retryPolicy) &&
         attempt < this.options.maxRetries
       ) {
         await this.waitBeforeRetry(attempt, response.headers.get("retry-after"))
@@ -209,7 +231,10 @@ export class ZohoHttpClient {
     }
   }
 
-  private async send(request: ZohoHttpRequest, accessToken: string): Promise<Response> {
+  private async send(
+    request: ZohoHttpRequest,
+    accessToken: string
+  ): Promise<{ response: Response; text: string }> {
     const fetchImplementation = this.options.fetch ?? globalThis.fetch
     const url = this.buildUrl(request)
     const headers: Record<string, string> = {
@@ -222,12 +247,16 @@ export class ZohoHttpClient {
       headers["content-type"] = "application/json"
     }
 
-    return fetchImplementation(url, {
+    const response = await fetchImplementation(url, {
       method: request.method,
       headers,
       body: request.body === undefined ? undefined : JSON.stringify(request.body),
       signal: AbortSignal.timeout(this.options.timeoutMs),
     })
+
+    // Read the body here so a timeout or socket error while streaming is treated
+    // as a transport failure instead of being silently converted to an empty body.
+    return { response, text: await response.text() }
   }
 
   private buildUrl(request: ZohoHttpRequest): URL {
