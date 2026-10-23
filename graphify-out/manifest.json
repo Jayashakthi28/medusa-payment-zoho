@@ -348,9 +348,9 @@
     "semantic_hash": ""
   },
   "docs/PROGRESS.md": {
-    "mtime": 1792713823.1282344,
-    "seen": 1792714037.98594,
-    "ast_hash": "b1044c355db73bbdd14ec3f146d8240b",
+    "mtime": 1792714252.956403,
+    "seen": 1792714266.08092,
+    "ast_hash": "b82e2d634d7eb699fcf9c18ba3a0c9e7",
     "semantic_hash": ""
   },
   "docs/architecture.md": {
@@ -414,9 +414,9 @@
     "semantic_hash": ""
   },
   "docs/graphify.md": {
-    "mtime": 1792713981.6716905,
-    "seen": 1792714037.985944,
-    "ast_hash": "31b407d10424cdabb37fec15bed1d2a6",
+    "mtime": 1792714209.9290805,
+    "seen": 1792714266.080925,
+    "ast_hash": "73cff4f4b72c7a687d728ff3b4c9fb11",
     "semantic_hash": ""
   },
   "docs/medusa-integration-listing.md": {

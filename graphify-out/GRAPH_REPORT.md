@@ -1,22 +1,22 @@
 # Graph Report - medusa-zoho-payments  (2026-10-23)
 
 ## Corpus Check
-- 87 files · ~114,053 words
+- 87 files · ~114,140 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 5 file(s) not represented in the graph (top: (none) 4, .example 1)
 
 ## Summary
-- 1259 nodes · 2498 edges · 68 communities (63 shown, 5 thin omitted)
+- 1260 nodes · 2499 edges · 71 communities (66 shown, 5 thin omitted)
 - Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 264 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4fed70df`
+- Built from commit: `29790820`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- ZohoPaymentProviderService
+- .createZohoSession
 - zoho-client.ts
 - server/index.ts
 - widget.test.ts
@@ -80,10 +80,13 @@
 - AGENTS.md — working agreement for `medusa-payment-zoho`
 - References
 - Examples
-- .updatePayment
+- session-data.ts
 - [1.0.0] - 2026-10-23
 - ssr.test.ts
 - High-severity findings
+- ZohoValidationError
+- service.ts
+- Storefront: hosted checkout
 
 ## God Nodes (most connected - your core abstractions)
 1. `ZohoValidationError` - 52 edges
@@ -112,27 +115,27 @@
 ## Import Cycles
 - None detected.
 
-## Communities (68 total, 5 thin omitted)
+## Communities (71 total, 5 thin omitted)
 
-### Community 0 - "ZohoPaymentProviderService"
-Cohesion: 0.14
-Nodes (11): COR-05 — High — Zoho amount and currency are never reconciled before declaring capture, COR-09 — Medium — `payment.failed` → `FAILED` is ignored by Medusa 2.22, contrary to the docs, COR-20 — Low — Documentation drift and small factual inconsistencies, Resolved findings, clearedPaymentState(), parseComparableAmount(), readIdempotencyKey(), readMedusaSessionId() (+3 more)
+### Community 0 - ".createZohoSession"
+Cohesion: 0.18
+Nodes (6): Resolved findings, clearedPaymentState(), readIdempotencyKey(), readMedusaSessionId(), truncate(), stripProviderOwnedSessionData()
 
 ### Community 1 - "zoho-client.ts"
-Cohesion: 0.19
-Nodes (13): isJsonRecord(), JsonRecord, requireRecord(), requireString(), toZohoNumber(), ZohoPaymentsClient, CreateZohoPaymentSessionInput, CreateZohoRefundInput (+5 more)
+Cohesion: 0.18
+Nodes (11): isJsonRecord(), requireRecord(), requireString(), toZohoNumber(), CreateZohoPaymentSessionInput, CreateZohoRefundInput, ZohoPayment, ZohoPaymentSession (+3 more)
 
 ### Community 2 - "server/index.ts"
-Cohesion: 0.20
-Nodes (19): API shape, ZohoWebhookVerificationError, assertSigningKey(), assertValidZohoWebhookSignature(), constantTimeEqual(), firstHeaderValue(), hmacSha256Hex(), isValidZohoHostedCheckoutSignature() (+11 more)
+Cohesion: 0.22
+Nodes (18): API shape, assertSigningKey(), assertValidZohoWebhookSignature(), constantTimeEqual(), firstHeaderValue(), hmacSha256Hex(), isValidZohoHostedCheckoutSignature(), isValidZohoWebhookSignature() (+10 more)
 
 ### Community 3 - "widget.test.ts"
 Cohesion: 0.11
 Nodes (9): resetZohoCheckoutCacheForTests(), ZOHO_WIDGET_SCRIPT_URL, WidgetConstructor, WidgetInstance, WidgetRequest, WidgetResponse, WidgetStub, WidgetStubOptions (+1 more)
 
 ### Community 4 - "HTTP Transport"
-Cohesion: 0.06
-Nodes (20): ensureTrailingSlash(), getPayloadString(), getRetryAfterMilliseconds(), isJsonRecord(), isNetworkError(), isRetryableStatus(), parseJsonObject(), ZohoHttpClient (+12 more)
+Cohesion: 0.05
+Nodes (29): M1. HTTP 2xx response with a non-zero Zoho `code` is untested, ensureTrailingSlash(), getPayloadString(), getRetryAfterMilliseconds(), isJsonRecord(), isNetworkError(), isRetryableStatus(), isSuccessPayload() (+21 more)
 
 ### Community 5 - "oauth.test.ts"
 Cohesion: 0.12
@@ -147,8 +150,8 @@ Cohesion: 0.09
 Nodes (25): apiCalls(), BASE_SESSION_INPUT, BASE_TIME, ClientOverrides, createClientHarness(), createLogger(), createRouter(), FakeClock (+17 more)
 
 ### Community 8 - "providers.ts"
-Cohesion: 0.06
-Nodes (50): Expiry normalization, COR-08 — Medium — A late `payment.failed` reconciled to success uses the failed attempt's amount, COR-15 — Low — Metadata cap arithmetic, reserved `zoho_session_id`, and stale mode fields are inconsistent, H3. `payment.failed` tests use a session bridge Zoho webhooks do not provide, 4. Fixtures and the fake client, @medusajs/framework, vitest, isFailedPaymentStatus() (+42 more)
+Cohesion: 0.13
+Nodes (24): 4. Fixtures and the fake client, @medusajs/framework, vitest, baseOptions(), buildPaymentEvent(), captureMedusaError(), Clock, createClient() (+16 more)
 
 ### Community 9 - "Storefront Examples"
 Cohesion: 0.10
@@ -203,36 +206,36 @@ Cohesion: 0.67
 Nodes (3): repository, type, url
 
 ### Community 26 - "traceability.md"
-Cohesion: 0.08
-Nodes (32): Attribution, Code of Conduct, Enforcement, Enforcement responsibilities, Our pledge, Our standards, Scope, Graphify knowledge graph (+24 more)
+Cohesion: 0.09
+Nodes (25): Attribution, Code of Conduct, Enforcement, Enforcement responsibilities, Our pledge, Our standards, Scope, Graphify knowledge graph (+17 more)
 
 ### Community 27 - "3. Findings"
 Cohesion: 0.05
-Nodes (48): COR-04 — High — The webhook verifies `rawData` but maps a separately supplied payload object, 1. Executive summary, 2. Threat model and assumptions, 3. Findings, 4. Minor correctness and hardening notes, 5. Verified safe, 6. Needs live verification, 7. Test coverage observations (+40 more)
+Nodes (37): 1. Executive summary, 2. Threat model and assumptions, 3. Findings, 5. Verified safe, 6. Needs live verification, 7. Test coverage observations, 8. Prioritized remediation checklist, Amounts (except SEC-06/SEC-07) (+29 more)
 
 ### Community 28 - "Test-quality review — medusa-payment-zoho"
 Cohesion: 0.05
-Nodes (39): 1. Executive summary, 4. Needs live Zoho verification, 5. Test gaps, 6. Prioritized checklist, 7. Key references, Correctness review — `medusa-payment-zoho`, Findings at a glance, P0 — block the 1.0.0 release (+31 more)
+Nodes (38): 1. Executive summary, 4. Needs live Zoho verification, 5. Test gaps, 6. Prioritized checklist, 7. Key references, Correctness review — `medusa-payment-zoho`, Findings at a glance, P0 — block the 1.0.0 release (+30 more)
 
 ### Community 29 - "Troubleshooting"
 Cohesion: 0.05
 Nodes (44): 10. Refund failures, 11. Provider not visible in Admin, 12. Region and domain problems, 13. Payment succeeded but no order, 14. Still stuck?, 15. Related documentation, 1. First checks, 2. Authentication and scopes (+36 more)
 
 ### Community 30 - "src/index.ts"
-Cohesion: 0.11
-Nodes (30): ZohoCheckoutSession, JsonRecord, RETRYABLE_SOCKET_CODES, ZohoHttpClientOptions, ZohoHttpMethod, ZohoHttpRequest, ZohoRetryPolicy, AccessTokenProvider (+22 more)
+Cohesion: 0.18
+Nodes (22): ZohoCheckoutSession, ZohoAccessTokenProviderOptions, JsonRecord, ZohoPaymentsClient, ZohoPaymentsClientOptions, ResolvedZohoPaymentOptions, ZohoHostedCheckoutOptions, ZohoPaymentOptions (+14 more)
 
 ### Community 31 - "service.ts"
-Cohesion: 0.16
-Nodes (19): Decimal, formatAmountForZoho(), formatAmountStringForZoho(), getCurrencyFractionDigits(), getCurrencySymbol(), isPositiveAmount(), normalizeCurrencyCode(), toFiniteDecimal() (+11 more)
+Cohesion: 0.24
+Nodes (12): Decimal, formatAmountForZoho(), formatAmountStringForZoho(), getCurrencyFractionDigits(), getCurrencySymbol(), isPositiveAmount(), normalizeCurrencyCode(), toFiniteDecimal() (+4 more)
 
 ### Community 32 - "npm and Medusa integrations listing copy"
 Cohesion: 0.09
 Nodes (22): 10. Submission checklist for `medusajs.com/integrations`, 11. Listing copy review notes, 12. References, 1. Listing metadata, 2. Suggested listing title and short description, 3. Suggested long description, 4. Suggested feature bullets for the listing body, 5. Installation and configuration (+14 more)
 
 ### Community 33 - "errors.ts"
-Cohesion: 0.18
-Nodes (13): Capture is verification, not an action, Prioritized tests to add, 2. Start the redirect, getErrorMessage(), isZohoPaymentError(), ZohoApiError, ZohoAuthenticationError, ZohoPaymentError (+5 more)
+Cohesion: 0.19
+Nodes (12): Capture is verification, not an action, getErrorMessage(), isZohoPaymentError(), ZohoApiError, ZohoAuthenticationError, ZohoPaymentError, ZohoPaymentErrorCode, ZohoPaymentStateError (+4 more)
 
 ### Community 34 - "Publishing `medusa-payment-zoho`"
 Cohesion: 0.10
@@ -243,8 +246,8 @@ Cohesion: 0.15
 Nodes (17): 7. Session expiry and retries, buildAddress(), buildWidgetOptions(), getErrorField(), instanceCache, isRecord(), isZohoSessionExpired(), parseCheckoutSession() (+9 more)
 
 ### Community 36 - ".initiatePayment"
-Cohesion: 0.16
-Nodes (15): ADR-0003: Payment-session lifecycle and state mapping, Alternatives considered, Authorization and status mapping, Consequences, Context, Creation, reuse, and cart updates, Decision, Negative (+7 more)
+Cohesion: 0.13
+Nodes (21): ADR-0003: Payment-session lifecycle and state mapping, Alternatives considered, Authorization and status mapping, Consequences, Context, Creation, reuse, and cart updates, Decision, Expiry normalization (+13 more)
 
 ### Community 37 - "Zoho Payments API research"
 Cohesion: 0.12
@@ -272,7 +275,7 @@ Nodes (15): 1. Minimal configuration, 2. Environment variables, 3.1 Credentials,
 
 ### Community 43 - ".authorizePayment"
 Cohesion: 0.19
-Nodes (12): ADR-0002: Checkout architecture — widget first, hosted checkout supported, Alternatives considered, Consequences, Context, Negative, Positive, References, Test and verification pointers (+4 more)
+Nodes (11): ADR-0002: Checkout architecture — widget first, hosted checkout supported, Alternatives considered, Consequences, Context, Negative, Positive, References, Test and verification pointers (+3 more)
 
 ### Community 44 - "Testing and verification"
 Cohesion: 0.14
@@ -291,8 +294,8 @@ Cohesion: 0.22
 Nodes (11): Both modes, one server model, Decision, Embedded widget is the primary path, Hosted checkout is an explicit opt-in, Trust and packaging rules, COR-17 — Low — Browser helper timeout and error mapping do not match the documented surface, M2. The widget request has no timeout or abort, despite the documented option, closeWidget() (+3 more)
 
 ### Community 48 - ".capturePayment"
-Cohesion: 0.37
-Nodes (6): Context, 2. Provider contract, 6. Auto-capture and the Medusa lifecycle, 3. Verified correct, 1. Traceability matrix, isCapturedPaymentStatus()
+Cohesion: 0.24
+Nodes (9): Context, 2. Provider contract, 6. Auto-capture and the Medusa lifecycle, 3. Verified correct, COR-05 — High — Zoho amount and currency are never reconciled before declaring capture, 1. Traceability matrix, isCapturedPaymentStatus(), parseComparableAmount() (+1 more)
 
 ### Community 49 - "ADR-0006: OAuth token lifecycle and retry policy"
 Cohesion: 0.15
@@ -312,15 +315,15 @@ Nodes (12): 10. Security checklist, 11. Related documentation, 1. Register the w
 
 ### Community 53 - ".requestAccessToken"
 Cohesion: 0.21
-Nodes (10): asNonEmptyString(), asPositiveNumber(), computeUsableLifetime(), ensureTrailingSlash(), errorFromTokenResponse(), getRetryAfterMilliseconds(), isNetworkError(), isRetryableStatus() (+2 more)
+Nodes (13): asNonEmptyString(), asPositiveNumber(), CachedAccessToken, computeUsableLifetime(), ensureTrailingSlash(), errorFromTokenResponse(), getRetryAfterMilliseconds(), isNetworkError() (+5 more)
 
 ### Community 54 - "Medusa v2 payment provider research"
 Cohesion: 0.18
 Nodes (11): 1. Division of responsibility, 3. The `data` contract and `session_id`, 4. Statuses and actions, 5. Webhook route behaviour, 7. Version and runtime notes, 8. Package-shape implications, 9. References, `data.session_id` (+3 more)
 
 ### Community 55 - "2. Findings"
-Cohesion: 0.18
-Nodes (11): 2. Findings, COR-02 — Critical — Hosted-checkout return signature omits `mandate_id`, COR-06 — High — Declared Medusa support starts at 2.16.0, but the code uses 2.17.2-only enums, COR-07 — High (needs live verification) — Session and refund `amount` are sent as JSON strings, while Zoho's schema declares numbers, COR-10 — Medium — Canceled refunds are treated as success; the replay guard ignores amount and status, COR-12 — Medium — A payment from a superseded Zoho session still maps to the current Medusa session, COR-13 — Medium — Account and live-mode checks fail open when fields are absent, COR-14 — Medium — Documentation claims the provider's output `id` is the Medusa payment-session id; Medusa 2.22 ignores it (+3 more)
+Cohesion: 0.14
+Nodes (14): 2. Findings, COR-02 — Critical — Hosted-checkout return signature omits `mandate_id`, COR-06 — High — Declared Medusa support starts at 2.16.0, but the code uses 2.17.2-only enums, COR-07 — High (needs live verification) — Session and refund `amount` are sent as JSON strings, while Zoho's schema declares numbers, COR-08 — Medium — A late `payment.failed` reconciled to success uses the failed attempt's amount, COR-09 — Medium — `payment.failed` → `FAILED` is ignored by Medusa 2.22, contrary to the docs, COR-10 — Medium — Canceled refunds are treated as success; the replay guard ignores amount and status, COR-11 — Medium — A positive amount below the currency precision formats to `"0.00"` after the positivity check (+6 more)
 
 ### Community 56 - "Contributing"
 Cohesion: 0.20
@@ -354,9 +357,9 @@ Nodes (9): 1. Medusa v2, 2. Zoho Payments, 3. Standards, 4. Community patterns, 
 Cohesion: 0.22
 Nodes (9): Examples, Files, Hosted checkout alternative, Mobile and framework notes, Prerequisites, State handling in the example button, The embedded widget flow, Webhook endpoint (+1 more)
 
-### Community 64 - ".updatePayment"
-Cohesion: 0.48
-Nodes (6): COR-01 — Critical — Client-controlled payment-session data can select an arbitrary Zoho payment or session, SEC-01 — Critical — Client-controlled payment identifiers are trusted for authorization, H6. Session reuse ignores a captured status when `paymentId` is absent, mergeSessionData(), isReusableZohoSession(), parseZohoSessionData()
+### Community 64 - "session-data.ts"
+Cohesion: 0.16
+Nodes (22): COR-15 — Low — Metadata cap arithmetic, reserved `zoho_session_id`, and stale mode fields are inconsistent, H3. `payment.failed` tests use a session bridge Zoho webhooks do not provide, buildZohoMetadataEntries(), buildZohoSessionData(), extractMedusaSessionId(), extractZohoSessionId(), findZohoMetadataValue(), isRecord() (+14 more)
 
 ### Community 65 - "[1.0.0] - 2026-10-23"
 Cohesion: 0.33
@@ -366,25 +369,37 @@ Nodes (5): [1.0.0] - 2026-10-23, Added, Changelog, Known limitations, Security
 Cohesion: 0.40
 Nodes (5): H1. The webhook verifies one body but maps a different object, H4. Positive amounts below the currency precision format to zero, H5. A new session inherits stale payment and refund state from `input.data`, H7. A payment from a superseded session is still mapped to the current Medusa session, High-severity findings
 
+### Community 68 - "ZohoValidationError"
+Cohesion: 0.19
+Nodes (18): COR-04 — High — The webhook verifies `rawData` but maps a separately supplied payload object, 4. Minor correctness and hardening notes, SEC-02 — High — Webhook signature covers `rawData`, but the event is read from separately supplied `data`, H2. Webhook amounts, currencies, and statuses are not validated, 2. Start the redirect, ZohoValidationError, ZohoWebhookEvent, assertAccountAndMode() (+10 more)
+
+### Community 69 - "service.ts"
+Cohesion: 0.44
+Nodes (5): isFailedPaymentStatus(), isTerminalSessionStatus(), mapZohoPaymentStatus(), mapZohoSessionStatus(), ComparableAmount
+
+### Community 70 - "Storefront: hosted checkout"
+Cohesion: 0.25
+Nodes (8): 1. Configure the provider, 3. Return URL parameters, 4. Success route, 5. Failure route, 6. Webhook-first completion, 8. Security checklist, 9. Related documentation, Storefront: hosted checkout
+
 ## Knowledge Gaps
 - **10 isolated node(s):** `@medusajs/medusa`, `@arethetypeswrong/cli`, `@types/node`, `@vitest/coverage-v8`, `eslint` (+5 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 602 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 603 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `vitest` connect `providers.ts` to `errors.ts`, `ssr.test.ts`, `widget.test.ts`, `HTTP Transport`, `oauth.test.ts`, `server/index.ts`, `Zoho Client Tests`, `Package Manifest`, `Provider Options`, `Logging Adapter`, `service.ts`?**
-  _High betweenness centrality (0.109) - this node is a cross-community bridge._
+- **Why does `vitest` connect `providers.ts` to `session-data.ts`, `errors.ts`, `ssr.test.ts`, `widget.test.ts`, `HTTP Transport`, `oauth.test.ts`, `server/index.ts`, `service.ts`, `Zoho Client Tests`, `Package Manifest`, `Provider Options`, `Logging Adapter`, `service.ts`?**
+  _High betweenness centrality (0.111) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `ZohoValidationError` (e.g. with `COR-04 — High — The webhook verifies `rawData` but maps a separately supplied payload object` and `COR-11 — Medium — A positive amount below the currency precision formats to `"0.00"` after the positivity check`) actually correct?**
   _`ZohoValidationError` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@medusajs/medusa`, `@arethetypeswrong/cli`, `@types/node` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `ZohoPaymentProviderService` be split into smaller, more focused modules?**
-  _Cohesion score 0.14333333333333334 - nodes in this community are weakly interconnected._
-- **Why does `ZohoValidationError` connect `service.ts` to `ZohoPaymentProviderService`, `errors.ts`, `zoho-client.ts`, `client/index.ts`, `.initiatePayment`, `server/index.ts`, `ssr.test.ts`, `widget.test.ts`, `providers.ts`, `redirectToZohoHostedCheckout`, `Zoho Client Tests`, `.authorizePayment`, `Provider Options`, `payWithZohoCheckout`, `.capturePayment`, `3. Findings`, `src/index.ts`?**
+- **Should `widget.test.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
+- **Why does `ZohoValidationError` connect `ZohoValidationError` to `.createZohoSession`, `zoho-client.ts`, `server/index.ts`, `widget.test.ts`, `Zoho Client Tests`, `providers.ts`, `Provider Options`, `3. Findings`, `src/index.ts`, `service.ts`, `errors.ts`, `client/index.ts`, `.initiatePayment`, `.authorizePayment`, `payWithZohoCheckout`, `.capturePayment`, `2. Findings`, `redirectToZohoHostedCheckout`, `session-data.ts`, `ssr.test.ts`, `service.ts`?**
   _High betweenness centrality (0.094) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `ZohoConfigurationError` (e.g. with `6. Validation rules` and `One primitive, three message builders`) actually correct?**
   _`ZohoConfigurationError` has 4 INFERRED edges - model-reasoned connections that need verification._
-- **Should `widget.test.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
+- **Should `HTTP Transport` be split into smaller, more focused modules?**
+  _Cohesion score 0.05380852550663871 - nodes in this community are weakly interconnected._
