@@ -72,7 +72,7 @@ Current result, verified on 2026-10-23:
 Test Files  17 passed (17)
      Tests  755 passed (755)
 Statements   : 100% ( 1028/1028 )
-Branches     : 100% ( 959/959 )
+Branches     : 100% ( 960/960 )
 Functions    : 100% ( 193/193 )
 Lines        : 100% ( 1026/1026 )
 ```
