@@ -473,7 +473,7 @@ Collect:
 - relevant logs with secrets and raw bodies removed.
 
 Open an issue at
-[github.com/Jayashakthi28/medusa-zoho-payments/issues](https://github.com/Jayashakthi28/medusa-zoho-payments/issues).
+[github.com/Jayashakthi28/medusa-payment-zoho/issues](https://github.com/Jayashakthi28/medusa-payment-zoho/issues).
 For security issues, follow [SECURITY.md](../SECURITY.md) instead of opening a public
 issue.
 

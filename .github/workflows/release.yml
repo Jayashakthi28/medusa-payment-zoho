@@ -32,10 +32,16 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.22.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
           registry-url: https://registry.npmjs.org
+
+      # Keep npm new enough for Trusted Publishing after the first token-based
+      # release. The token remains the bootstrap path until npmjs.com has a
+      # trusted-publisher configuration for this package.
+      - name: Upgrade npm
+        run: npm install -g npm@11.5.1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -55,3 +61,18 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify the published version
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+
+          for attempt in 1 2 3 4 5; do
+            if npm view "medusa-payment-zoho@${PACKAGE_VERSION}" version; then
+              exit 0
+            fi
+            echo "npm has not exposed ${PACKAGE_VERSION} yet (attempt ${attempt}/5); retrying..."
+            sleep 10
+          done
+
+          echo "::error::npm did not expose medusa-payment-zoho@${PACKAGE_VERSION} after publishing."
+          exit 1

@@ -102,11 +102,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Jayashakthi28/medusa-zoho-payments.git"
+    "url": "git+https://github.com/Jayashakthi28/medusa-payment-zoho.git"
   },
-  "homepage": "https://github.com/Jayashakthi28/medusa-zoho-payments#readme",
+  "homepage": "https://github.com/Jayashakthi28/medusa-payment-zoho#readme",
   "bugs": {
-    "url": "https://github.com/Jayashakthi28/medusa-zoho-payments/issues"
+    "url": "https://github.com/Jayashakthi28/medusa-payment-zoho/issues"
   },
   "publishConfig": {
     "access": "public"

@@ -73,4 +73,4 @@ Initial release of the Zoho Payments provider for Medusa v2.
 - One provider instance maps to one Zoho account; multi-account routing is not built in.
 - There is no durable webhook `event_id` store in this release.
 
-[1.0.0]: https://github.com/Jayashakthi28/medusa-zoho-payments/releases/tag/v1.0.0
+[1.0.0]: https://github.com/Jayashakthi28/medusa-payment-zoho/releases/tag/v1.0.0

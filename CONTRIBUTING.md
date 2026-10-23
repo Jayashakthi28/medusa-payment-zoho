@@ -18,8 +18,8 @@ Security issues must follow [SECURITY.md](./SECURITY.md), not the public issue t
 ## 2. Setup
 
 ```bash
-git clone https://github.com/Jayashakthi28/medusa-zoho-payments.git
-cd medusa-zoho-payments
+git clone https://github.com/Jayashakthi28/medusa-payment-zoho.git
+cd medusa-payment-zoho
 pnpm install --frozen-lockfile
 cp .env.example .env
 ```

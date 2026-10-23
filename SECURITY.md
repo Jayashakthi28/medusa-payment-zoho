@@ -16,7 +16,7 @@ responsible for carrying the fix forward.
 
 Report it privately through GitHub Security Advisories:
 
-<https://github.com/Jayashakthi28/medusa-zoho-payments/security/advisories/new>
+<https://github.com/Jayashakthi28/medusa-payment-zoho/security/advisories/new>
 
 Please include:
 

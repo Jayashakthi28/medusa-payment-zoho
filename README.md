@@ -2,7 +2,7 @@
 
 **Zoho Payments provider for Medusa v2 — India-first, with embedded checkout, hosted checkout, signed webhooks, and refunds.**
 
-[![CI](https://github.com/Jayashakthi28/medusa-zoho-payments/actions/workflows/ci.yml/badge.svg)](https://github.com/Jayashakthi28/medusa-zoho-payments/actions/workflows/ci.yml)
+[![CI](https://github.com/Jayashakthi28/medusa-payment-zoho/actions/workflows/ci.yml/badge.svg)](https://github.com/Jayashakthi28/medusa-payment-zoho/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 `medusa-payment-zoho` connects a Medusa v2 store to **Zoho Payments** in India

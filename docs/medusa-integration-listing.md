@@ -22,9 +22,9 @@ facts; Medusa's directory renders the npm README.
 | Runtime              | Node.js 22.22.x for Medusa 2.22 (package `engines` says `>=20`)         |
 | License              | MIT                                                                     |
 | Author               | Jayashakthi Vishnu                                                      |
-| Repository           | <https://github.com/Jayashakthi28/medusa-zoho-payments>                 |
-| Homepage             | <https://github.com/Jayashakthi28/medusa-zoho-payments#readme>          |
-| Issues               | <https://github.com/Jayashakthi28/medusa-zoho-payments/issues>          |
+| Repository           | <https://github.com/Jayashakthi28/medusa-payment-zoho>                  |
+| Homepage             | <https://github.com/Jayashakthi28/medusa-payment-zoho#readme>           |
+| Issues               | <https://github.com/Jayashakthi28/medusa-payment-zoho/issues>           |
 | npm                  | <https://www.npmjs.com/package/medusa-payment-zoho> (after publication) |
 | Provider identifier  | `zoho`                                                                  |
 | Stored provider ID   | `pp_zoho_zoho`                                                          |
@@ -273,7 +273,7 @@ the directory.
 This package is community-maintained by Jayashakthi Vishnu. Support is best-effort
 through GitHub Issues:
 
-https://github.com/Jayashakthi28/medusa-zoho-payments/issues
+https://github.com/Jayashakthi28/medusa-payment-zoho/issues
 
 There is no SLA, no paid support plan, and no official support commitment from Zoho
 Corporation or Medusa. When opening an issue, include the package version, Medusa
