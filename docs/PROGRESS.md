@@ -4,8 +4,8 @@ This file is the handoff record for the project. Update it before every commit.
 
 ## Status
 
-- Current wave: **4 — full gate, graphify, final audit**
-- Overall: implementation, tests, docs and packaging complete; graphify and tag pending
+- Current wave: **complete — v1.0.0 release candidate**
+- Overall: implementation, tests, docs, packaging, graph and audit complete
 - Last updated: 2026-10-23
 - Tests: **755 passing**, 100% lines/branches/functions/statements
 - Coverage: 1028 statements, 960 branches, 193 functions, 1026 lines
@@ -45,12 +45,20 @@ This file is the handoff record for the project. Update it before every commit.
 - Scripts: OAuth refresh-token helper, live smoke test, package verifier.
 - Graphify: code graph and curated community labels committed under `graphify-out/`.
 
-## Remaining work
+## Release state
 
-1. Run the complete `pnpm check` gate from a clean state after the final docs commit.
-2. Confirm the Graphify report is fresh for the release commit.
-3. Create the annotated `v1.0.0` tag.
-4. Leave the branch unpublished for the maintainer's later push and npm publish.
+- `pnpm check` passes from a clean tree: lint, format, typecheck, 755 tests at 100%
+  coverage, build, pack check, and packed-consumer import verification.
+- Annotated tag `v1.0.0` points at the release commit.
+- Graphify graph, report, curated labels, and manifest are committed.
+- Nothing has been pushed and no npm package has been published. Those are deliberate
+  maintainer actions, documented in `docs/publishing.md`.
+
+## Remaining maintainer actions
+
+1. Review the local history and push when ready.
+2. Authenticate to npm and publish the tagged release with provenance.
+3. Run `scripts/smoke.mjs` against a real Zoho merchant account before live traffic.
 
 ## Commit log
 
@@ -58,3 +66,5 @@ This file is the handoff record for the project. Update it before every commit.
 - `7fc23c4` — `feat: implement Zoho payment provider and storefront helper`
 - `20d582e` — `docs: add integration guides, ADRs and audit records`
 - `5f4fb28` — `chore: add CI, release and package verification workflows`
+- `4fed70d` — `docs: add graphify map and finalize handoff`
+- `051dc48` — `chore: refresh graphify graph and labels`
