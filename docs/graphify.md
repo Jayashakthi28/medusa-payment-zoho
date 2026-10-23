@@ -13,9 +13,10 @@ agent can navigate the code and tests without rereading every file.
 | `graphify-out/.graphify_labels.json` | Curated human-readable community labels                                |
 | `graphify-out/graph.html`            | Interactive graph (generated locally, not committed)                   |
 
-The checked-in graph is **code-only** because semantic extraction for prose documents
-requires an LLM key. The documentation is already committed and indexed by normal file
-search; adding it to the graph later is an optional enhancement.
+The checked-in graph is **deterministic**: source, tests, scripts, examples, and
+supported documentation are extracted structurally, without an LLM API key. Semantic
+prose extraction is not required to maintain it; the documentation is also linked from
+`docs/PROGRESS.md`.
 
 ## Query examples
 
@@ -47,9 +48,11 @@ The audit report includes Graphify's health check. The generated report notes ex
 confidence; `EXTRACTED` means a direct AST edge, `INFERRED` means a semantic guess. Treat
 `INFERRED` edges as navigation hints, not proof.
 
-## Why code-only
+## Why deterministic
 
 This project values reproducibility and does not require an API key to maintain its
-graph. The AST graph covers the provider, transport, signatures, browser helper, tests,
-scripts, and configuration, which are the files most likely to change. Documentation
-changes are easier to review directly and are linked from `docs/PROGRESS.md`.
+graph. The extractor covers the provider, transport, signatures, browser helper, tests,
+scripts, configuration, and supported docs, which are the files most likely to change.
+Documentation changes remain easy to review directly and are linked from
+`docs/PROGRESS.md`. The report records the commit it was built from; a later docs-only
+commit does not invalidate the code graph.

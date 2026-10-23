@@ -1,1 +1,22 @@
-{"0": "Payment Provider Core", "1": "Provider Contracts", "2": "Core Exports & Errors", "3": "Browser Checkout Helper", "4": "HTTP Transport", "5": "OAuth Token Provider", "6": "Packaging & Live Scripts", "7": "Zoho Client Tests", "8": "Provider Test Fixtures", "9": "Storefront Examples", "10": "OAuth Setup Script", "11": "TypeScript Config", "12": "Package Manifest", "13": "Provider Options", "14": "Dev Dependencies", "15": "Package Exports", "16": "Logging Adapter", "17": "NPM Scripts", "18": "Prettier Config", "19": "ESLint Config", "20": "Peer Dependencies", "21": "Repository Metadata", "22": "Bug Tracker", "23": "Node Engine", "24": "Publish Config", "25": "Build Config"}
+{
+  "4": "HTTP Transport",
+  "6": "Packaging & Live Scripts",
+  "7": "Zoho Client Tests",
+  "9": "Storefront Examples",
+  "10": "OAuth Setup Script",
+  "11": "TypeScript Config",
+  "12": "Package Manifest",
+  "13": "Provider Options",
+  "14": "Dev Dependencies",
+  "15": "Package Exports",
+  "16": "Logging Adapter",
+  "17": "NPM Scripts",
+  "18": "Prettier Config",
+  "19": "ESLint Config",
+  "20": "Peer Dependencies",
+  "21": "Repository Metadata",
+  "22": "Bug Tracker",
+  "23": "Node Engine",
+  "24": "Publish Config",
+  "25": "Build Config"
+}
