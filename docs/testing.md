@@ -230,6 +230,26 @@ region, and an account that permits session creation. Sandbox credentials are sa
 local runs; live credentials should be used only with a deliberate small amount and a
 refund plan.
 
+### Sandbox verification record (2026-10-23)
+
+The India sandbox was exercised with real sandbox credentials:
+
+- `scripts/get-refresh-token.mjs` generated the sandbox refresh token using
+  `ZohoPaySandbox.*` scopes and `soid=zohopaysandbox.<account_id>`, and wrote it to an
+  ignored env file with `0600` permissions.
+- `scripts/smoke.mjs` created and retrieved a sandbox payment session for `INR 1.00`.
+- The embedded widget loaded with `otherOptions.is_test_mode = true`.
+- A sandbox Visa test card (`4111 1111 1111 1111`, `Success`) completed a ₹1 payment.
+- The widget response signature verified with the sandbox signing key.
+- `authorizePayment()` against the real sandbox payment returned `captured` and
+  `paymentStatus: succeeded`; `getPaymentStatus()` also returned `captured`.
+- A refund request reached Zoho but was rejected with
+  `refund_exceeds_balance_amount` because the sandbox account had no available refund
+  balance. That is a sandbox account-state condition, not a provider error; retry after
+  the sandbox balance/settlement is available.
+
+This is a sandbox test only. No live production payment has been processed.
+
 For a full checkout smoke test, use the storefront guides in
 [`docs/storefront-widget.md`](./storefront-widget.md) or
 [`docs/storefront-hosted.md`](./storefront-hosted.md) and the examples in

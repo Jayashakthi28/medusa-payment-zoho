@@ -50,8 +50,10 @@ This file is the handoff record for the project. Update it before every commit.
 - `pnpm check` passes from a clean tree: lint, format, typecheck, 755 tests at 100%
   coverage, build, pack check, and packed-consumer import verification.
 - `1.0.0` is published on npm with provenance.
-- `1.0.1` is published on npm with provenance.
-- Sandbox OAuth and smoke tests passed against Zoho India Sandbox on 2026-10-23.
+- `1.0.1` and `1.0.2` are published on npm with provenance.
+- `1.0.2` release workflow is green; sandbox widget E2E passed on 2026-10-23.
+- Sandbox OAuth, session smoke, widget payment, signature verification, and provider
+  authorization all passed against Zoho India Sandbox on 2026-10-23.
 - Annotated tag `v1.0.2` points at the sandbox-support release.
 - Graphify graph, report, curated labels, and manifest are committed.
 - Nothing has been pushed and no npm package has been published. Those are deliberate
@@ -63,7 +65,8 @@ This file is the handoff record for the project. Update it before every commit.
 2. Configure npm Trusted Publishing for `Jayashakthi28/medusa-payment-zoho` and
    `release.yml`, then remove `NPM_TOKEN` for future releases.
 3. Deprecate the `0.0.0-stage` bootstrap version if it is not intentional.
-4. Finish the interactive sandbox card/UPI payment and webhook check before live traffic.
+4. Add refund balance/settlement to the sandbox account and verify refund settlement;
+   then repeat with a small live transaction before live traffic.
 
 ## Commit log
 
