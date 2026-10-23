@@ -129,24 +129,24 @@ is a normal top-level navigation and has broader browser support.
 
 ## 5. Medusa feature coverage
 
-| Feature                       | Supported | Notes                                                          |
-| ----------------------------- | --------- | -------------------------------------------------------------- |
-| Create/update payment session | Yes       | Reuse only when amount, currency, mode, and expiry all match   |
-| Authorize payment             | Yes       | Polls Zoho session/payment                                     |
-| Auto-capture                  | Yes       | Zoho captures successful payments                              |
-| Manual capture                | **No**    | `capturePayment` verifies, does not capture                    |
-| Partial capture               | **No**    | Not offered by Zoho                                            |
-| Cancel pending payment        | **No**    | No Zoho API; wait for expiry                                   |
-| Cancel captured payment       | **No**    | Refund instead                                                 |
-| Full refund                   | Yes       | `POST /payments/{id}/refunds`                                  |
-| Partial refund                | Yes       | Same endpoint                                                  |
-| Multiple refunds              | Yes       | Each call creates a new Zoho refund                            |
-| Refund webhook → Medusa       | **No**    | `refund.*` maps to `NOT_SUPPORTED`; poll `GET /refunds/{id}`   |
-| Webhook payment completion    | Yes       | `payment.succeeded`, `payment.pending`, `payment.failed`       |
-| Saved payment methods         | **No**    | Optional account-holder/payment-method methods not implemented |
-| Payment links                 | **No**    | Out of scope                                                   |
-| Payouts                       | **No**    | Out of scope                                                   |
-| Multi-account routing         | **No**    | One provider instance = one Zoho account                       |
+| Feature                       | Supported | Notes                                                                  |
+| ----------------------------- | --------- | ---------------------------------------------------------------------- |
+| Create/update payment session | Yes       | Reuse only when amount, currency, mode, and expiry all match           |
+| Authorize payment             | Yes       | Polls Zoho session/payment                                             |
+| Auto-capture                  | Yes       | Zoho captures successful payments                                      |
+| Manual capture                | **No**    | `capturePayment` verifies, does not capture                            |
+| Partial capture               | **No**    | Not offered by Zoho                                                    |
+| Cancel pending payment        | **No**    | No Zoho API; wait for expiry                                           |
+| Cancel captured payment       | **No**    | Refund instead                                                         |
+| Full refund                   | Yes       | `POST /payments/{id}/refunds`                                          |
+| Partial refund                | Yes       | Same endpoint                                                          |
+| Multiple refunds              | Yes       | Each call creates a new Zoho refund                                    |
+| Refund webhook → Medusa       | **No**    | `refund.*` maps to `NOT_SUPPORTED`; poll `GET /refunds/{id}`           |
+| Webhook payment completion    | Partial   | `succeeded` completes; 2.22 ignores pending/failed non-success actions |
+| Saved payment methods         | **No**    | Optional account-holder/payment-method methods not implemented         |
+| Payment links                 | **No**    | Out of scope                                                           |
+| Payouts                       | **No**    | Out of scope                                                           |
+| Multi-account routing         | **No**    | One provider instance = one Zoho account                               |
 
 ## 6. Known limitations
 
