@@ -66,19 +66,19 @@ Admin.
 
 ## 3. Zoho compatibility
 
-| Capability      | India (`region: "in"`)                                 | US (`region: "us"`)                                     |
-| --------------- | ------------------------------------------------------ | ------------------------------------------------------- |
-| Default region  | Yes                                                    | Opt-in                                                  |
-| API base        | `https://payments.zoho.in/api/v1`                      | `https://payments.zoho.com/api/v1`                      |
-| OAuth base      | `https://accounts.zoho.in`                             | `https://accounts.zoho.com`                             |
-| Hosted checkout | `https://payments.zoho.in/hostedcheckout/<access_key>` | `https://payments.zoho.com/hostedcheckout/<access_key>` |
-| Widget domain   | `IN`                                                   | `US`                                                    |
-| Embedded widget | Yes                                                    | Yes                                                     |
-| Refunds         | Yes                                                    | Yes                                                     |
-| Webhooks        | Yes                                                    | Yes                                                     |
+| Capability      | India live (`region: "in"`)                            | India sandbox (`environment: "sandbox"`)                      | US live (`region: "us"`)                                |
+| --------------- | ------------------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------- |
+| Default         | Yes                                                    | Opt-in                                                        | Opt-in                                                  |
+| API base        | `https://payments.zoho.in/api/v1`                      | `https://paymentssandbox.zoho.in/api/v1`                      | `https://payments.zoho.com/api/v1`                      |
+| OAuth base      | `https://accounts.zoho.in`                             | `https://accounts.zoho.in`                                    | `https://accounts.zoho.com`                             |
+| Hosted checkout | `https://payments.zoho.in/hostedcheckout/<access_key>` | `https://paymentssandbox.zoho.in/hostedcheckout/<access_key>` | `https://payments.zoho.com/hostedcheckout/<access_key>` |
+| Widget domain   | `IN`                                                   | `IN` (with `is_test_mode`)                                    | `US`                                                    |
+| Embedded widget | Yes                                                    | Yes                                                           | Yes                                                     |
+| Refunds         | Yes                                                    | Yes                                                           | Yes                                                     |
+| Webhooks        | Yes                                                    | Yes                                                           | Yes                                                     |
 
-The account, OAuth client, and region must match. A token from the US data centre will
-not authorize an India account, and vice versa.
+The account, OAuth client, environment, and region must match. Live and sandbox objects
+are isolated, and a token from one data centre/environment cannot authorize another.
 
 Required scopes:
 

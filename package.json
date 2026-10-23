@@ -1,6 +1,6 @@
 {
   "name": "medusa-payment-zoho",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Zoho Payments payment provider for Medusa v2 — India-first, with embedded Checkout Widget, hosted checkout, signed webhooks, refunds, and a browser checkout helper.",
   "author": "Jayashakthi Vishnu",
   "license": "MIT",

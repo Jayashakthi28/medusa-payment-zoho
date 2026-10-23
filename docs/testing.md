@@ -6,7 +6,7 @@
 - **Coverage gate:** 100% lines, branches, functions, and statements
 
 This document is the operating guide for tests, coverage, and release verification.
-It describes the checked-in suite only. A live Zoho sandbox is **not** available to CI,
+It describes the checked-in suite only. Zoho credentials are **not** available to CI,
 so the live checks in this document are manual and opt-in.
 
 ## 1. Commands
@@ -70,11 +70,11 @@ Current result, verified on 2026-10-23:
 
 ```text
 Test Files  17 passed (17)
-     Tests  755 passed (755)
-Statements   : 100% ( 1028/1028 )
-Branches     : 100% ( 960/960 )
-Functions    : 100% ( 193/193 )
-Lines        : 100% ( 1026/1026 )
+     Tests  762 passed (762)
+Statements   : 100% ( 1039/1039 )
+Branches     : 100% ( 993/993 )
+Functions    : 100% ( 194/194 )
+Lines        : 100% ( 1037/1037 )
 ```
 
 These numbers will change as tests are added. Re-run `pnpm test:coverage` rather than
@@ -184,7 +184,7 @@ Coverage on a subset is useful for debugging but is **not** the gate: global thr
 will fail because untouched modules have no coverage. Always finish with the full
 `pnpm test:coverage`.
 
-## 6. Live smoke test (manual, no money movement)
+## 6. Zoho smoke test (manual, no money movement)
 
 `scripts/smoke.mjs` is the checked-in live harness. It exchanges the refresh token,
 creates one Zoho payment session, retrieves it, and verifies that the returned amount and
@@ -193,15 +193,17 @@ unpaid session expires on Zoho's side.
 
 Prerequisites:
 
-1. Copy `.env.example` to `.env` and fill in the four required `ZOHO_PAYMENTS_*`
-   credentials. The script reads `ZOHO_PAYMENTS_ACCOUNT_ID`, `CLIENT_ID`, `CLIENT_SECRET`,
-   and `REFRESH_TOKEN`.
-2. Use an account and OAuth client from the same data centre. `ZOHO_PAYMENTS_REGION`
-   defaults to `in`; set `us` for the US.
+1. Copy `.env.example` to `.env.sandbox` for testing (it is Git-ignored) or `.env` for
+   live, and fill in the four required credentials: `ZOHO_PAYMENTS_ACCOUNT_ID`,
+   `CLIENT_ID`, `CLIENT_SECRET`, and `REFRESH_TOKEN`.
+2. Set `ZOHO_PAYMENTS_ENVIRONMENT=sandbox` for Zoho Sandbox, or `live` for production.
+   Sandbox is currently India-only. Use an account and OAuth client from the matching
+   environment and data centre.
 3. Run `pnpm build` first; the script imports `dist/server/index.js`.
 4. Do not run it with `NODE_ENV=production`. The script refuses that environment.
 
 ```bash
+set -a; source .env.sandbox; set +a
 pnpm build
 node scripts/smoke.mjs
 ```
@@ -210,6 +212,7 @@ Optional variables:
 
 | Variable                       | Default | Purpose                               |
 | ------------------------------ | ------- | ------------------------------------- |
+| `ZOHO_PAYMENTS_ENVIRONMENT`    | `live`  | `live` or `sandbox` (India-only)      |
 | `ZOHO_PAYMENTS_REGION`         | `in`    | `in` or `us`                          |
 | `ZOHO_PAYMENTS_SMOKE_AMOUNT`   | `1.00`  | Positive decimal major-unit amount    |
 | `ZOHO_PAYMENTS_SMOKE_CURRENCY` | `INR`   | Any ISO-4217 code the account accepts |
@@ -222,8 +225,10 @@ The script prints the session ID, status, expiry, and, when Zoho returns one, a 
 checkout URL. A hosted checkout URL contains an `access_key` that acts as a bearer
 capability; do not paste it into an issue, log, or analytics event.
 
-Do not add the smoke test to CI. It needs live credentials, a matching region, and a Zoho
-account that permits session creation.
+Do not add the smoke test to CI. It needs Zoho credentials, a matching environment and
+region, and an account that permits session creation. Sandbox credentials are safe for
+local runs; live credentials should be used only with a deliberate small amount and a
+refund plan.
 
 For a full checkout smoke test, use the storefront guides in
 [`docs/storefront-widget.md`](./storefront-widget.md) or
@@ -398,7 +403,7 @@ Run against this checkout after the latest build:
 | --------------------- | ------ | ---------------------------------------------------------------------- |
 | `pnpm lint`           | Pass   | ESLint over source and tests                                           |
 | `pnpm typecheck`      | Pass   | `tsc --noEmit`                                                         |
-| `pnpm test:coverage`  | Pass   | 755 tests, 100% on all four metrics                                    |
+| `pnpm test:coverage`  | Pass   | 762 tests, 100% on all four metrics                                    |
 | `pnpm build`          | Pass   | ESM, CJS, `.d.ts`, and `.d.cts` emitted                                |
 | `pnpm verify:package` | Pass   | Installed tarball imports every public entry point                     |
 | `pnpm format:check`   | Pass   | Prettier over the repository                                           |
@@ -408,10 +413,10 @@ Re-run every command on the final commit; do not treat this table as permanent.
 
 ### Suite and packaging gaps
 
-- **No live Zoho sandbox in CI.** The suite uses fakes. OAuth, session creation, payment
-  methods, hosted checkout, refunds, and webhook delivery are not exercised against
-  Zoho in automated runs. The manual smoke and sandbox checklist cover them before a
-  release.
+- **No Zoho credentials in CI.** The suite uses fakes. OAuth, session creation, payment
+  methods, hosted checkout, refunds, and webhook delivery are exercised manually against
+  Zoho Sandbox before a release. The credential-free suite remains deterministic and
+  runs on every commit.
 - **No Medusa application integration fixture.** The provider tests call the provider
   service directly. A full fixture that boots Medusa, resolves `pp_zoho_zoho`, and posts
   to `/hooks/payment/zoho_zoho` is referenced by the ADRs but is not checked in.

@@ -145,6 +145,9 @@ module.exports = defineConfig({
               // India is the default; use "us" for the US data centre.
               region: "in",
 
+              // "live" (default) or "sandbox". Sandbox is India-only.
+              environment: "live",
+
               // "widget" (default) or "hosted".
               checkoutMode: "widget",
 
@@ -359,6 +362,7 @@ Success/failure route examples:
 | `clientSecret`            | —                        | Yes                  | OAuth client secret. Server-only.                                                             |
 | `refreshToken`            | —                        | Yes                  | Long-lived offline refresh token. Server-only.                                                |
 | `region`                  | `"in"`                   | No                   | `"in"` (India) or `"us"`. Account and OAuth client must match.                                |
+| `environment`             | `"live"`                 | No                   | `"live"` or `"sandbox"` (India only).                                                         |
 | `checkoutMode`            | `"widget"`               | No                   | `"widget"` or `"hosted"`.                                                                     |
 | `apiKey`                  | —                        | Widget mode          | Publishable Zoho widget API key. Safe to expose to the browser.                               |
 | `signingKey`              | —                        | Strongly recommended | Developer Space signing key for webhooks, widget, and hosted-return signatures.               |
@@ -404,26 +408,27 @@ See [Configuration](./docs/configuration.md) for the full reference.
 
 ## What is supported
 
-| Capability                    | Supported | Notes                                                                |
-| ----------------------------- | --------- | -------------------------------------------------------------------- |
-| Embedded Zoho Checkout Widget | Yes       | Default mode; requires `apiKey`.                                     |
-| Zoho Hosted Checkout          | Yes       | Opt-in; requires `successUrl` and `failureUrl`.                      |
-| Payment session create/update | Yes       | Reuses a session only when amount, currency, mode, and expiry match. |
-| Authorization and capture     | Yes       | Zoho auto-captures; the provider verifies the captured payment.      |
-| Full and partial refunds      | Yes       | Against a captured payment; asynchronous Zoho status.                |
-| Signed webhooks               | Yes       | `payment.succeeded`, `payment.pending`, `payment.failed`.            |
-| India and US data centres     | Yes       | One provider instance per Zoho account.                              |
-| Multi-currency                | Yes       | Subject to your Zoho account's supported currencies.                 |
-| Saved payment methods         | **No**    | Account-holder and saved-method APIs are not implemented in v1.      |
-| Manual or partial capture     | **No**    | Zoho does not offer it.                                              |
-| Cancel a pending payment      | **No**    | No Zoho API; the session expires (15 minutes by default).            |
-| Cancel a captured payment     | **No**    | Refund instead.                                                      |
-| Refund webhook → Medusa       | **No**    | Acknowledged as `NOT_SUPPORTED`; reconcile with `retrieveRefund`.    |
-| Payment links, payouts        | **No**    | Outside this provider's scope.                                       |
-| Automatic webhook creation    | **No**    | Register webhooks manually in Zoho.                                  |
-| Automatic reconciliation      | **No**    | Use the exported `ZohoPaymentsClient` in your own job.               |
-| Multi-account routing         | **No**    | One provider instance maps to one Zoho account.                      |
-| Built-in storefront UI        | **No**    | Use the documented helpers or hosted checkout.                       |
+| Capability                    | Supported | Notes                                                                  |
+| ----------------------------- | --------- | ---------------------------------------------------------------------- |
+| Embedded Zoho Checkout Widget | Yes       | Default mode; requires `apiKey`.                                       |
+| Zoho Hosted Checkout          | Yes       | Opt-in; requires `successUrl` and `failureUrl`.                        |
+| Payment session create/update | Yes       | Reuses a session only when amount, currency, mode, and expiry match.   |
+| Authorization and capture     | Yes       | Zoho auto-captures; the provider verifies the captured payment.        |
+| Full and partial refunds      | Yes       | Against a captured payment; asynchronous Zoho status.                  |
+| Signed webhooks               | Yes       | `payment.succeeded`, `payment.pending`, `payment.failed`.              |
+| India and US data centres     | Yes       | One provider instance per Zoho account.                                |
+| Zoho Sandbox                  | Yes       | India-only; separate sandbox credentials and `environment: "sandbox"`. |
+| Multi-currency                | Yes       | Subject to your Zoho account's supported currencies.                   |
+| Saved payment methods         | **No**    | Account-holder and saved-method APIs are not implemented in v1.        |
+| Manual or partial capture     | **No**    | Zoho does not offer it.                                                |
+| Cancel a pending payment      | **No**    | No Zoho API; the session expires (15 minutes by default).              |
+| Cancel a captured payment     | **No**    | Refund instead.                                                        |
+| Refund webhook → Medusa       | **No**    | Acknowledged as `NOT_SUPPORTED`; reconcile with `retrieveRefund`.      |
+| Payment links, payouts        | **No**    | Outside this provider's scope.                                         |
+| Automatic webhook creation    | **No**    | Register webhooks manually in Zoho.                                    |
+| Automatic reconciliation      | **No**    | Use the exported `ZohoPaymentsClient` in your own job.                 |
+| Multi-account routing         | **No**    | One provider instance maps to one Zoho account.                        |
+| Built-in storefront UI        | **No**    | Use the documented helpers or hosted checkout.                         |
 
 A successful Zoho payment is **already captured**. There is no separate capture step,
 no partial capture, and no cancel API. `capturePayment` re-reads the payment and

@@ -16,6 +16,7 @@ export type {
   ZohoCheckoutMode,
   ZohoCheckoutResult,
   ZohoCustomerPrefill,
+  ZohoEnvironment,
   ZohoPaymentLogger,
   ZohoPaymentSessionData,
   ZohoRegion,

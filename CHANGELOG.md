@@ -5,6 +5,23 @@ All notable changes to `medusa-payment-zoho` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-10-23
+
+### Added
+
+- Zoho Payments **Sandbox** support for India via `environment: "sandbox"`:
+  - sandbox API and hosted-checkout endpoints
+  - sandbox OAuth scopes and `zohopaysandbox.<account_id>` SOID
+  - widget `otherOptions.is_test_mode = true`
+  - sandbox-aware smoke test and refresh-token helper
+- OAuth helper automatically opens the authorization URL in the browser.
+- OAuth helper can write the refresh token directly to an ignored env file with `0600`
+  permissions instead of printing it.
+
+### Documentation
+
+- Added sandbox setup, test cards/UPI/Net Banking scenarios, and live/sandbox separation.
+
 ## [1.0.1] - 2026-10-23
 
 ### Fixed
@@ -86,5 +103,6 @@ Initial release of the Zoho Payments provider for Medusa v2.
 - One provider instance maps to one Zoho account; multi-account routing is not built in.
 - There is no durable webhook `event_id` store in this release.
 
+[1.0.2]: https://github.com/Jayashakthi28/medusa-payment-zoho/releases/tag/v1.0.2
 [1.0.1]: https://github.com/Jayashakthi28/medusa-payment-zoho/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Jayashakthi28/medusa-payment-zoho/releases/tag/v1.0.0

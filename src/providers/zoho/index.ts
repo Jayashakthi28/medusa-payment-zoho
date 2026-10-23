@@ -13,3 +13,4 @@ export type {
   ZohoPaymentsClientLike,
   ZohoRegionConfig,
 } from "./types"
+export type { ZohoEnvironment, ZohoRegion } from "../../types"

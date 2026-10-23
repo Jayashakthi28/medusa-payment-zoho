@@ -66,7 +66,13 @@ describe("ZohoPaymentProviderService.initiatePayment", () => {
       session_id: "payses_1",
       custom: "keep-me",
       zohoSessionId: "zoho_sess_1",
+      environment: "live",
       checkoutMode: "widget",
+      paymentId: undefined,
+      paymentStatus: undefined,
+      lastRefundId: undefined,
+      lastRefundStatus: undefined,
+      lastRefundIdempotencyKey: undefined,
       amount: "1234.50",
       currencyCode: "INR",
       currencySymbol: "₹",
@@ -364,6 +370,7 @@ describe("ZohoPaymentProviderService.initiatePayment", () => {
     const harness = createHarness()
     const staleData = buildZohoSessionData({
       zohoSessionId: "zoho_sess_old",
+      environment: "live",
       checkoutMode: "widget",
       amount: "100.00",
       currencyCode: "INR",
@@ -672,5 +679,30 @@ describe("idempotency key preference", () => {
     expect(harness.client.createPaymentSessionCalls[0]?.referenceNumber).toBe(
       "payses_ctx"
     )
+  })
+})
+
+describe("sandbox session data", () => {
+  it("marks the widget as test mode and uses sandbox endpoints", async () => {
+    const harness = createHarness({
+      options: { environment: "sandbox" },
+    })
+
+    const result = await harness.provider.initiatePayment({
+      amount: 1,
+      currency_code: "INR",
+      data: { session_id: "payses_sandbox" },
+    })
+
+    expect(result.data).toMatchObject({
+      environment: "sandbox",
+      medusaSessionId: "payses_sandbox",
+      widget: {
+        accountId: "acct_in",
+        domain: "IN",
+        apiKey: "widget_api_key",
+        isTestMode: true,
+      },
+    })
   })
 })

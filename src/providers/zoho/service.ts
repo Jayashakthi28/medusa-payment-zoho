@@ -226,6 +226,7 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
           amount,
           currencyCode,
           this.zohoConfig.checkoutMode,
+          this.zohoConfig.environment,
           this.now()
         )
       ) {
@@ -295,6 +296,7 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
             accountId: this.zohoConfig.accountId,
             domain: this.zohoConfig.regionConfig.widgetDomain,
             apiKey: this.getWidgetApiKey(),
+            ...(this.zohoConfig.environment === "sandbox" ? { isTestMode: true } : {}),
           }
         : undefined
     const checkoutUrl =
@@ -304,6 +306,7 @@ export default class ZohoPaymentProviderService extends AbstractPaymentProvider<
 
     const sessionData = buildZohoSessionData({
       zohoSessionId: session.payments_session_id,
+      environment: this.zohoConfig.environment,
       checkoutMode: this.zohoConfig.checkoutMode,
       amount,
       currencyCode,

@@ -8,6 +8,14 @@
 /** Zoho Payments data-centre region. India is the default for this plugin. */
 export type ZohoRegion = "in" | "us"
 
+/**
+ * Zoho Payments environment.
+ *
+ * `sandbox` is the isolated Zoho test environment; it uses sandbox-specific
+ * credentials, OAuth scopes, endpoints, and widget test mode.
+ */
+export type ZohoEnvironment = "live" | "sandbox"
+
 /** How the customer completes the Zoho payment. */
 export type ZohoCheckoutMode = "widget" | "hosted"
 
@@ -27,6 +35,8 @@ export interface ZohoWidgetSessionConfig {
    * secret, the refresh token, or the webhook signing key.
    */
   apiKey: string
+  /** True when the widget must run against Zoho's sandbox environment. */
+  isTestMode?: boolean
 }
 
 /**
@@ -38,6 +48,8 @@ export interface ZohoWidgetSessionConfig {
 export interface ZohoPaymentSessionData extends Record<string, unknown> {
   /** Zoho payment session ID. This is also the provider's session `id`. */
   zohoSessionId: string
+  /** Live Zoho environment or isolated sandbox. */
+  environment: ZohoEnvironment
   /** Widget or hosted checkout. */
   checkoutMode: ZohoCheckoutMode
   /** Decimal amount in major units, formatted for the currency. */

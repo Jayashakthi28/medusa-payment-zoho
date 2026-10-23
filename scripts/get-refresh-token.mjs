@@ -12,7 +12,9 @@
  * Requires no npm packages. Credentials are read from the environment only.
  */
 
+import { execFile } from "node:child_process"
 import { randomBytes } from "node:crypto"
+import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { createServer } from "node:http"
 
 const REGION_ACCOUNTS_BASE_URLS = {
@@ -20,12 +22,25 @@ const REGION_ACCOUNTS_BASE_URLS = {
   us: "https://accounts.zoho.com",
 }
 
-const SCOPES = [
-  "ZohoPay.payments.CREATE",
-  "ZohoPay.payments.READ",
-  "ZohoPay.refunds.CREATE",
-  "ZohoPay.refunds.READ",
-]
+const SCOPES = {
+  live: [
+    "ZohoPay.payments.CREATE",
+    "ZohoPay.payments.READ",
+    "ZohoPay.refunds.CREATE",
+    "ZohoPay.refunds.READ",
+  ],
+  sandbox: [
+    "ZohoPaySandbox.payments.CREATE",
+    "ZohoPaySandbox.payments.READ",
+    "ZohoPaySandbox.refunds.CREATE",
+    "ZohoPaySandbox.refunds.READ",
+  ],
+}
+
+const SOID_PREFIX = {
+  live: "zohopay",
+  sandbox: "zohopaysandbox",
+}
 
 const DEFAULT_REGION = "in"
 const DEFAULT_REDIRECT_URI = "http://localhost:53682/callback"
@@ -98,6 +113,26 @@ function resolveRegion() {
   return { region, accountsBaseUrl }
 }
 
+function resolveEnvironment(region) {
+  const environment = (
+    optionalEnvironment("ZOHO_PAYMENTS_ENVIRONMENT") ?? "live"
+  ).toLowerCase()
+
+  if (environment !== "live" && environment !== "sandbox") {
+    throw new OAuthHelperError(
+      `Unsupported ZOHO_PAYMENTS_ENVIRONMENT "${environment}". Use "live" or "sandbox".`
+    )
+  }
+
+  if (environment === "sandbox" && region !== "in") {
+    throw new OAuthHelperError(
+      'Zoho sandbox is currently supported only with ZOHO_PAYMENTS_REGION="in".'
+    )
+  }
+
+  return environment
+}
+
 function parseRedirectUri(raw) {
   let url
 
@@ -168,12 +203,13 @@ function buildAuthorizationUrl({
   clientId,
   redirectUri,
   state,
+  environment,
 }) {
   const url = new URL("oauth/v2/org/auth", `${accountsBaseUrl}/`)
 
-  url.searchParams.set("scope", SCOPES.join(","))
+  url.searchParams.set("scope", SCOPES[environment].join(","))
   url.searchParams.set("client_id", clientId)
-  url.searchParams.set("soid", `zohopay.${accountId}`)
+  url.searchParams.set("soid", `${SOID_PREFIX[environment]}.${accountId}`)
   url.searchParams.set("response_type", "code")
   url.searchParams.set("redirect_uri", redirectUri)
   url.searchParams.set("state", state)
@@ -260,6 +296,50 @@ function listen(server, port, host) {
     server.once("listening", handleListening)
     server.listen(port, host)
   })
+}
+
+function openBrowser(url) {
+  if (process.env.ZOHO_PAYMENTS_NO_BROWSER === "true") {
+    return
+  }
+
+  const opener =
+    process.platform === "darwin"
+      ? { command: "open", args: [url] }
+      : process.platform === "win32"
+        ? { command: "cmd", args: ["/c", "start", "", url] }
+        : { command: "xdg-open", args: [url] }
+
+  execFile(opener.command, opener.args, { stdio: "ignore" }, () => {
+    // Opening a browser is best-effort; the URL is always printed.
+  })
+}
+
+function writeRefreshTokenToEnvFile(path, refreshToken) {
+  const lines = existsSync(path) ? readFileSync(path, "utf8").split(/\r?\n/) : []
+  const assignment = `ZOHO_PAYMENTS_REFRESH_TOKEN=${refreshToken}`
+  let replaced = false
+  const updated = lines.map((line) => {
+    if (/^ZOHO_PAYMENTS_REFRESH_TOKEN=/.test(line)) {
+      replaced = true
+      return assignment
+    }
+    return line
+  })
+
+  if (!replaced) {
+    if (updated.length > 0 && updated[updated.length - 1] === "") {
+      updated[updated.length - 1] = assignment
+    } else {
+      updated.push(assignment)
+    }
+  }
+
+  writeFileSync(path, `${updated.join("\n").replace(/\n+$/, "")}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+  })
+  chmodSync(path, 0o600)
 }
 
 async function waitForAuthorizationCode({ redirect, expectedState, authorizationUrl }) {
@@ -384,6 +464,7 @@ async function waitForAuthorizationCode({ redirect, expectedState, authorization
     )
     console.log(authorizationUrl.href)
     console.log("")
+    openBrowser(authorizationUrl.href)
     console.log(`Waiting for the callback on ${redirect.url.href} ...`)
     console.log("Press Ctrl+C to cancel.")
     return await codePromise
@@ -530,6 +611,7 @@ async function main() {
   const clientSecret = requireEnvironment("ZOHO_PAYMENTS_CLIENT_SECRET")
   const accountId = requireEnvironment("ZOHO_PAYMENTS_ACCOUNT_ID")
   const { region, accountsBaseUrl } = resolveRegion()
+  const environment = resolveEnvironment(region)
   const redirectUri =
     optionalEnvironment("ZOHO_PAYMENTS_REDIRECT_URI") ?? DEFAULT_REDIRECT_URI
   const parsedRedirect = parseRedirectUri(redirectUri)
@@ -550,13 +632,15 @@ async function main() {
     clientId,
     redirectUri,
     state,
+    environment,
   })
 
   console.log("Zoho Payments refresh-token helper")
+  console.log(`  Environment:  ${environment}`)
   console.log(`  Region:       ${region} (${accountsBaseUrl})`)
-  console.log(`  Account:      zohopay.${accountId}`)
+  console.log(`  Account:      ${SOID_PREFIX[environment]}.${accountId}`)
   console.log(`  Redirect URI: ${redirect.url.href}`)
-  console.log(`  Scopes:       ${SCOPES.join(", ")}`)
+  console.log(`  Scopes:       ${SCOPES[environment].join(", ")}`)
 
   let code = authCode
 
@@ -584,7 +668,17 @@ async function main() {
     code,
   })
 
-  printSuccess(payload, refreshToken)
+  const envFile = optionalEnvironment("ZOHO_PAYMENTS_ENV_FILE")
+
+  if (envFile !== undefined) {
+    writeRefreshTokenToEnvFile(envFile, refreshToken)
+    console.log(
+      `\nRefresh token written to ${envFile} with 0600 permissions. It was not printed.`
+    )
+    console.log("Keep the file secret; it is ignored by Git when named .env.sandbox.")
+  } else {
+    printSuccess(payload, refreshToken)
+  }
 }
 
 main().catch((error) => {

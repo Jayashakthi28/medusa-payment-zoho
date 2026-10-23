@@ -32,6 +32,11 @@ The widget’s `payment_id` is a hint. The server retrieves the Zoho session/pay
 before Medusa creates a payment and completes the order. A malicious browser cannot
 forge success by returning an arbitrary ID.
 
+When `environment: "sandbox"` is configured, the provider includes
+`widget.isTestMode: true` in the session data and the helper initializes the Zoho widget
+with `otherOptions.is_test_mode = true`. Storefront code does not need a sandbox-specific
+branch.
+
 ## 2. Install and initialise the SDK
 
 The package is installed in the Medusa backend. The storefront also needs the Medusa JS

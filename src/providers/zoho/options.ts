@@ -23,6 +23,14 @@ export const US_REGION_CONFIG: ZohoRegionConfig = {
   widgetDomain: "US",
 }
 
+/** India sandbox. Zoho currently documents sandbox only for the India region. */
+export const INDIA_SANDBOX_REGION_CONFIG: ZohoRegionConfig = {
+  apiBaseUrl: "https://paymentssandbox.zoho.in/api/v1/",
+  accountsBaseUrl: "https://accounts.zoho.in/",
+  hostedCheckoutBaseUrl: "https://paymentssandbox.zoho.in/hostedcheckout",
+  widgetDomain: "IN",
+}
+
 const REGION_CONFIGS: Record<ZohoRegion, ZohoRegionConfig> = {
   in: INDIA_REGION_CONFIG,
   us: US_REGION_CONFIG,
@@ -150,9 +158,11 @@ function validateUrl(name: string, value: string): string {
 
 function resolveRegionConfig(
   region: ZohoRegion,
+  environment: "live" | "sandbox",
   source: Record<string, unknown>
 ): ZohoRegionConfig {
-  const defaults = REGION_CONFIGS[region]
+  const defaults =
+    environment === "sandbox" ? INDIA_SANDBOX_REGION_CONFIG : REGION_CONFIGS[region]
   const apiBaseUrl = optionalString(source, "apiBaseUrl") ?? defaults.apiBaseUrl
   const accountsBaseUrl =
     optionalString(source, "accountsBaseUrl") ?? defaults.accountsBaseUrl
@@ -320,6 +330,22 @@ export function resolveZohoPaymentOptions(
   }
 
   const region = regionValue
+  const environmentValue = optionalString(source, "environment") ?? "live"
+
+  if (environmentValue !== "live" && environmentValue !== "sandbox") {
+    throw new ZohoConfigurationError(
+      'Zoho Payments option "environment" must be "live" or "sandbox"'
+    )
+  }
+
+  const environment = environmentValue
+
+  if (environment === "sandbox" && region !== "in") {
+    throw new ZohoConfigurationError(
+      'Zoho Payments sandbox is currently supported only with region "in"'
+    )
+  }
+
   const checkoutModeValue = optionalString(source, "checkoutMode") ?? "widget"
 
   if (checkoutModeValue !== "widget" && checkoutModeValue !== "hosted") {
@@ -363,7 +389,7 @@ export function resolveZohoPaymentOptions(
     validateUrl("failureUrl", failureUrl)
   }
 
-  const regionConfig = resolveRegionConfig(region, source)
+  const regionConfig = resolveRegionConfig(region, environment, source)
   const allowedPaymentMethods = resolveAllowedPaymentMethods(source)
   const currencySymbols = resolveCurrencySymbols(source)
   const metadata = resolveMetadata(source)
@@ -385,6 +411,7 @@ export function resolveZohoPaymentOptions(
     clientSecret: requiredString(source, "clientSecret"),
     refreshToken: requiredString(source, "refreshToken"),
     region,
+    environment,
     regionConfig,
     checkoutMode,
     apiKey,

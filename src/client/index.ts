@@ -18,6 +18,7 @@ interface ZohoWidgetConfig {
   domain: ZohoWidgetDomain
   otherOptions: {
     api_key: string
+    is_test_mode?: boolean
   }
 }
 
@@ -71,6 +72,7 @@ export interface ZohoCheckoutSession {
     accountId: string
     domain: ZohoWidgetDomain
     apiKey: string
+    isTestMode?: boolean
   }
   checkoutUrl?: string
 }
@@ -129,6 +131,8 @@ function parseCheckoutSession(session: Record<string, unknown>): ZohoCheckoutSes
   const widgetApiKey = isRecord(widgetValue)
     ? readString(widgetValue, "apiKey")
     : undefined
+  const widgetIsTestMode =
+    isRecord(widgetValue) && widgetValue.isTestMode === true ? true : undefined
   const widgetDomain: ZohoWidgetDomain | undefined =
     isRecord(widgetValue) &&
     (widgetValue.domain === "IN" || widgetValue.domain === "US")
@@ -151,6 +155,7 @@ function parseCheckoutSession(session: Record<string, unknown>): ZohoCheckoutSes
             accountId: widgetAccountId,
             domain: widgetDomain,
             apiKey: widgetApiKey,
+            ...(widgetIsTestMode ? { isTestMode: true } : {}),
           }
         : undefined,
     checkoutUrl: readString(session, "checkoutUrl"),
@@ -305,7 +310,9 @@ function getWidgetInstance(
     throw new ZohoValidationError("Zoho Checkout Widget script is not available")
   }
 
-  const cacheKey = `${widget.accountId}:${widget.domain}:${widget.apiKey}`
+  const cacheKey = `${widget.accountId}:${widget.domain}:${widget.apiKey}:${
+    widget.isTestMode === true ? "sandbox" : "live"
+  }`
   const cached = instanceCache.get(cacheKey)
 
   if (cached) {
@@ -317,6 +324,7 @@ function getWidgetInstance(
     domain: widget.domain,
     otherOptions: {
       api_key: widget.apiKey,
+      ...(widget.isTestMode === true ? { is_test_mode: true } : {}),
     },
   })
 

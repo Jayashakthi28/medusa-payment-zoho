@@ -21,6 +21,7 @@ function freshSessionData(
   return {
     ...buildZohoSessionData({
       zohoSessionId: "zoho_sess_1",
+      environment: "live",
       checkoutMode: "widget",
       amount: "100.00",
       currencyCode: "INR",

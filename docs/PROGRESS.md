@@ -4,11 +4,11 @@ This file is the handoff record for the project. Update it before every commit.
 
 ## Status
 
-- Current wave: **complete — v1.0.1 release**
+- Current wave: **complete — v1.0.2 sandbox release**
 - Overall: implementation, tests, docs, packaging, graph and audit complete
 - Last updated: 2026-10-23
-- Tests: **755 passing**, 100% lines/branches/functions/statements
-- Coverage: 1028 statements, 960 branches, 193 functions, 1026 lines
+- Tests: **762 passing**, 100% lines/branches/functions/statements
+- Coverage: 1039 statements, 993 branches, 194 functions, 1037 lines
 
 ## Decisions locked
 
@@ -50,18 +50,20 @@ This file is the handoff record for the project. Update it before every commit.
 - `pnpm check` passes from a clean tree: lint, format, typecheck, 755 tests at 100%
   coverage, build, pack check, and packed-consumer import verification.
 - `1.0.0` is published on npm with provenance.
-- Annotated tag `v1.0.1` points at the release-automation patch.
+- `1.0.1` is published on npm with provenance.
+- Sandbox OAuth and smoke tests passed against Zoho India Sandbox on 2026-10-23.
+- Annotated tag `v1.0.2` points at the sandbox-support release.
 - Graphify graph, report, curated labels, and manifest are committed.
 - Nothing has been pushed and no npm package has been published. Those are deliberate
   maintainer actions, documented in `docs/publishing.md`.
 
 ## Remaining maintainer actions
 
-1. Confirm the `v1.0.1` release workflow is green after pushing the tag.
+1. Confirm the `v1.0.2` release workflow is green after pushing the tag.
 2. Configure npm Trusted Publishing for `Jayashakthi28/medusa-payment-zoho` and
    `release.yml`, then remove `NPM_TOKEN` for future releases.
 3. Deprecate the `0.0.0-stage` bootstrap version if it is not intentional.
-4. Run `scripts/smoke.mjs` against a real Zoho merchant account before live traffic.
+4. Finish the interactive sandbox card/UPI payment and webhook check before live traffic.
 
 ## Commit log
 

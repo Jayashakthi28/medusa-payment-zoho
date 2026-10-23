@@ -993,3 +993,34 @@ describe("script URL hardening", () => {
     ).resolves.toBeUndefined()
   })
 })
+
+describe("sandbox widget mode", () => {
+  it("sets is_test_mode and keeps sandbox instances separate", async () => {
+    const stub = installWidgetStub()
+
+    await payWithZohoCheckout({
+      session: buildWidgetSession({
+        environment: "sandbox",
+        widget: {
+          accountId: "acct_1",
+          domain: "IN",
+          apiKey: "api_key_1",
+          isTestMode: true,
+        },
+      }),
+    })
+
+    await payWithZohoCheckout({ session: buildWidgetSession() })
+
+    expect(stub.state.configs).toHaveLength(2)
+    expect(stub.state.configs[0]).toMatchObject({
+      account_id: "acct_1",
+      domain: "IN",
+      otherOptions: {
+        api_key: "api_key_1",
+        is_test_mode: true,
+      },
+    })
+    expect(stub.state.configs[1]?.otherOptions).not.toHaveProperty("is_test_mode")
+  })
+})

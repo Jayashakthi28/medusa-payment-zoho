@@ -1,5 +1,6 @@
 import type {
   ZohoCheckoutMode,
+  ZohoEnvironment,
   ZohoPaymentSessionData,
   ZohoWidgetSessionConfig,
 } from "../../types"
@@ -22,6 +23,7 @@ const MAX_ZOHO_METADATA_ENTRIES = 5
  */
 const PROVIDER_OWNED_SESSION_KEYS = new Set([
   "zohoSessionId",
+  "environment",
   "checkoutMode",
   "amount",
   "currencyCode",
@@ -44,6 +46,7 @@ const PROVIDER_OWNED_SESSION_KEYS = new Set([
 /** Validated, read-only view over untrusted session data. */
 export interface ZohoSessionDataView {
   zohoSessionId?: string
+  environment?: ZohoEnvironment
   checkoutMode?: ZohoCheckoutMode
   amount?: string
   currencyCode?: string
@@ -101,6 +104,11 @@ function readCheckoutMode(
   return value === "widget" || value === "hosted" ? value : undefined
 }
 
+function readEnvironment(source: Record<string, unknown>): ZohoEnvironment | undefined {
+  const value = source.environment
+  return value === "live" || value === "sandbox" ? value : undefined
+}
+
 function readWidgetConfig(
   source: Record<string, unknown>
 ): ZohoWidgetSessionConfig | undefined {
@@ -113,12 +121,19 @@ function readWidgetConfig(
   const accountId = readString(value, "accountId")
   const apiKey = readString(value, "apiKey")
   const domain = value.domain
+  const isTestMode =
+    typeof value.isTestMode === "boolean" ? value.isTestMode : undefined
 
   if (!accountId || !apiKey || (domain !== "IN" && domain !== "US")) {
     return undefined
   }
 
-  return { accountId, domain, apiKey }
+  return {
+    accountId,
+    domain,
+    apiKey,
+    ...(isTestMode === true ? { isTestMode: true } : {}),
+  }
 }
 
 /**
@@ -141,6 +156,7 @@ export function parseZohoSessionData(
 
   return {
     zohoSessionId: readString(source, "zohoSessionId"),
+    environment: readEnvironment(source),
     checkoutMode: readCheckoutMode(source),
     amount: readString(source, "amount"),
     currencyCode: readString(source, "currencyCode"),
@@ -243,6 +259,7 @@ export function isReusableZohoSession(
   amount: string,
   currencyCode: string,
   checkoutMode: ZohoCheckoutMode,
+  environment: ZohoEnvironment,
   now: number
 ): boolean {
   return (
@@ -252,6 +269,7 @@ export function isReusableZohoSession(
     existing.amount === amount &&
     existing.currencyCode === currencyCode &&
     existing.checkoutMode === checkoutMode &&
+    existing.environment === environment &&
     existing.expiresAt !== undefined &&
     existing.expiresAt > now + ZOHO_SESSION_SAFETY_WINDOW_MS
   )
@@ -282,6 +300,7 @@ export function normalizeZohoExpiryTime(
 /** Build the provider-owned session data returned to Medusa. */
 export function buildZohoSessionData(input: {
   zohoSessionId: string
+  environment: ZohoEnvironment
   checkoutMode: ZohoCheckoutMode
   amount: string
   currencyCode: string
@@ -297,6 +316,7 @@ export function buildZohoSessionData(input: {
 }): ZohoPaymentSessionData {
   return {
     zohoSessionId: input.zohoSessionId,
+    environment: input.environment,
     checkoutMode: input.checkoutMode,
     amount: input.amount,
     currencyCode: input.currencyCode,

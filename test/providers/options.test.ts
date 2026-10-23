@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ZohoConfigurationError, ZohoValidationError } from "../../src/core/errors"
 import {
   INDIA_REGION_CONFIG,
+  INDIA_SANDBOX_REGION_CONFIG,
   US_REGION_CONFIG,
   resetSigningKeyWarningForTests,
   resolveZohoPaymentOptions,
@@ -36,6 +37,7 @@ describe("resolveZohoPaymentOptions", () => {
     const resolved = resolveZohoPaymentOptions(baseOptions())
 
     expect(resolved.region).toBe("in")
+    expect(resolved.environment).toBe("live")
     expect(resolved.regionConfig).toEqual(INDIA_REGION_CONFIG)
     expect(resolved.checkoutMode).toBe("widget")
     expect(resolved.apiKey).toBe("widget_api_key")
@@ -569,5 +571,33 @@ describe("logger contract", () => {
     const logger: ZohoPaymentLogger = new FakeLogger()
 
     expect(resolveZohoPaymentOptions(baseOptions({ logger })).logger).toBe(logger)
+  })
+})
+
+describe("sandbox configuration", () => {
+  it("resolves the India sandbox endpoints and widget domain", () => {
+    const resolved = resolveZohoPaymentOptions(baseOptions({ environment: "sandbox" }))
+
+    expect(resolved.environment).toBe("sandbox")
+    expect(resolved.region).toBe("in")
+    expect(resolved.regionConfig).toEqual(INDIA_SANDBOX_REGION_CONFIG)
+    expect(resolved.regionConfig.apiBaseUrl).toBe(
+      "https://paymentssandbox.zoho.in/api/v1/"
+    )
+    expect(resolved.regionConfig.hostedCheckoutBaseUrl).toBe(
+      "https://paymentssandbox.zoho.in/hostedcheckout"
+    )
+  })
+
+  it("rejects an unknown environment", () => {
+    expect(() =>
+      resolveZohoPaymentOptions(invalid({ ...baseOptions(), environment: "staging" }))
+    ).toThrow('Zoho Payments option "environment" must be "live" or "sandbox"')
+  })
+
+  it("rejects sandbox with a non-India region", () => {
+    expect(() =>
+      resolveZohoPaymentOptions(baseOptions({ environment: "sandbox", region: "us" }))
+    ).toThrow('Zoho Payments sandbox is currently supported only with region "in"')
   })
 })

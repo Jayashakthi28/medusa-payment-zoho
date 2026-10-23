@@ -1,5 +1,6 @@
 import type {
   ZohoCheckoutMode,
+  ZohoEnvironment,
   ZohoPaymentLogger,
   ZohoRegion,
   ZohoWidgetDomain,
@@ -152,6 +153,8 @@ export interface ZohoPaymentOptions {
   refreshToken: string
   /** Data-centre region. Defaults to `in` (India). */
   region?: ZohoRegion
+  /** Live or sandbox environment. Defaults to `live`. */
+  environment?: ZohoEnvironment
   /** Embedded widget or hosted checkout. Defaults to `widget`. */
   checkoutMode?: ZohoCheckoutMode
   /** Publishable browser API key from Zoho Developer Space. Required for widget mode. */
@@ -205,6 +208,7 @@ export interface ResolvedZohoPaymentOptions {
   clientSecret: string
   refreshToken: string
   region: ZohoRegion
+  environment: ZohoEnvironment
   regionConfig: ZohoRegionConfig
   checkoutMode: ZohoCheckoutMode
   apiKey?: string

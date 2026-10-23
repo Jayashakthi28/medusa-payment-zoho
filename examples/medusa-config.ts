@@ -27,6 +27,9 @@ const region = process.env.ZOHO_PAYMENTS_REGION === "us" ? "us" : "in"
 const checkoutMode =
   process.env.ZOHO_PAYMENTS_CHECKOUT_MODE === "hosted" ? "hosted" : "widget"
 
+const environment =
+  process.env.ZOHO_PAYMENTS_ENVIRONMENT === "sandbox" ? "sandbox" : "live"
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -57,6 +60,7 @@ module.exports = defineConfig({
               apiKey: optionalEnv("ZOHO_PAYMENTS_API_KEY"),
 
               region,
+              environment,
               checkoutMode,
 
               // Required for hosted mode; ignored by the widget. Must be HTTPS outside

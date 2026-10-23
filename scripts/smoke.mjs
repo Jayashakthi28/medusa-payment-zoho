@@ -40,6 +40,15 @@ const REGIONS = {
   },
 }
 
+const SANDBOX_REGIONS = {
+  in: {
+    apiBaseUrl: "https://paymentssandbox.zoho.in/api/v1/",
+    accountsBaseUrl: "https://accounts.zoho.in/",
+    hostedCheckoutBaseUrl: "https://paymentssandbox.zoho.in/hostedcheckout",
+    widgetDomain: "IN",
+  },
+}
+
 const DEFAULT_AMOUNT = "1.00"
 const DEFAULT_CURRENCY = "INR"
 
@@ -138,14 +147,27 @@ async function runSmokeTest() {
   const serverEntry = await loadServerEntry()
   const { ZohoPaymentsClient, formatAmountForZoho, normalizeCurrencyCode } = serverEntry
 
+  const environment = (
+    optionalEnvironment("ZOHO_PAYMENTS_ENVIRONMENT") ?? "live"
+  ).toLowerCase()
   const regionName = (optionalEnvironment("ZOHO_PAYMENTS_REGION") ?? "in")
     .toLowerCase()
     .replace(/^zoho\./, "")
-  const region = REGIONS[regionName]
+
+  if (environment !== "live" && environment !== "sandbox") {
+    throw new SmokeTestError(
+      `Unsupported ZOHO_PAYMENTS_ENVIRONMENT "${environment}". Use "live" or "sandbox".`
+    )
+  }
+
+  const region =
+    environment === "sandbox" ? SANDBOX_REGIONS[regionName] : REGIONS[regionName]
 
   if (region === undefined) {
     throw new SmokeTestError(
-      `Unsupported ZOHO_PAYMENTS_REGION "${regionName}". Use "in" (default) or "us".`
+      environment === "sandbox"
+        ? `Zoho sandbox is currently supported only for region "in"; received "${regionName}".`
+        : `Unsupported ZOHO_PAYMENTS_REGION "${regionName}". Use "in" (default) or "us".`
     )
   }
 
@@ -169,6 +191,7 @@ async function runSmokeTest() {
   }
 
   console.log("Zoho Payments smoke test")
+  console.log(`  Environment: ${environment}`)
   console.log(`  Region:   ${regionName}`)
   console.log(`  Amount:   ${currency} ${amount}`)
   console.log("  Scope:    create and retrieve one payment session only")

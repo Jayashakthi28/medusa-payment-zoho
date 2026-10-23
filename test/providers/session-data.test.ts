@@ -329,6 +329,7 @@ describe("isReusableZohoSession", () => {
   ): ZohoSessionDataView {
     return {
       zohoSessionId: "zoho_sess_1",
+      environment: "live",
       checkoutMode: "widget",
       amount: "100.00",
       currencyCode: "INR",
@@ -338,9 +339,9 @@ describe("isReusableZohoSession", () => {
   }
 
   it("reuses an unpaid, matching, fresh session", () => {
-    expect(isReusableZohoSession(reusableView(), "100.00", "INR", "widget", NOW)).toBe(
-      true
-    )
+    expect(
+      isReusableZohoSession(reusableView(), "100.00", "INR", "widget", "live", NOW)
+    ).toBe(true)
   })
 
   it("does not reuse without a Zoho session ID", () => {
@@ -350,6 +351,7 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(false)
@@ -362,23 +364,24 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(false)
   })
 
   it("does not reuse when the amount, currency, or checkout mode changed", () => {
-    expect(isReusableZohoSession(reusableView(), "99.00", "INR", "widget", NOW)).toBe(
-      false
-    )
+    expect(
+      isReusableZohoSession(reusableView(), "99.00", "INR", "widget", "live", NOW)
+    ).toBe(false)
 
-    expect(isReusableZohoSession(reusableView(), "100.00", "USD", "widget", NOW)).toBe(
-      false
-    )
+    expect(
+      isReusableZohoSession(reusableView(), "100.00", "USD", "widget", "live", NOW)
+    ).toBe(false)
 
-    expect(isReusableZohoSession(reusableView(), "100.00", "INR", "hosted", NOW)).toBe(
-      false
-    )
+    expect(
+      isReusableZohoSession(reusableView(), "100.00", "INR", "hosted", "live", NOW)
+    ).toBe(false)
   })
 
   it("does not reuse without a known expiry", () => {
@@ -388,6 +391,7 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(false)
@@ -400,6 +404,7 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(false)
@@ -410,6 +415,7 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(false)
@@ -420,6 +426,7 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(true)
@@ -430,6 +437,7 @@ describe("isReusableZohoSession", () => {
         "100.00",
         "INR",
         "widget",
+        "live",
         NOW
       )
     ).toBe(false)
@@ -439,6 +447,7 @@ describe("isReusableZohoSession", () => {
 describe("buildZohoSessionData", () => {
   const required = {
     zohoSessionId: "zoho_sess_1",
+    environment: "live" as const,
     checkoutMode: "widget" as const,
     amount: "100.00",
     currencyCode: "INR",
@@ -508,5 +517,49 @@ describe("stripProviderOwnedSessionData", () => {
 
   it("returns an empty object for undefined data", () => {
     expect(stripProviderOwnedSessionData(undefined)).toEqual({})
+  })
+})
+
+describe("sandbox widget metadata", () => {
+  it("parses and preserves the widget test-mode flag", () => {
+    const parsed = parseZohoSessionData({
+      widget: {
+        accountId: "acct_in",
+        domain: "IN",
+        apiKey: "key",
+        isTestMode: true,
+      },
+    })
+
+    expect(parsed.widget).toEqual({
+      accountId: "acct_in",
+      domain: "IN",
+      apiKey: "key",
+      isTestMode: true,
+    })
+  })
+
+  it("omits a false or invalid test-mode flag", () => {
+    expect(
+      parseZohoSessionData({
+        widget: {
+          accountId: "acct_in",
+          domain: "IN",
+          apiKey: "key",
+          isTestMode: false,
+        },
+      }).widget
+    ).not.toHaveProperty("isTestMode")
+
+    expect(
+      parseZohoSessionData({
+        widget: {
+          accountId: "acct_in",
+          domain: "IN",
+          apiKey: "key",
+          isTestMode: "yes",
+        },
+      }).widget
+    ).not.toHaveProperty("isTestMode")
   })
 })

@@ -5,6 +5,7 @@ are passed from `medusa-config.ts` to the Medusa Payment Module and validated wh
 provider is constructed. Invalid options fail at startup, not on the first checkout.
 
 - **Default region:** India (`region: "in"`)
+- **Default environment:** live (`environment: "live"`); sandbox is India-only
 - **Default checkout mode:** embedded widget (`checkoutMode: "widget"`)
 - **Provider identifier:** `zoho`
 - **Stored provider ID:** `pp_zoho_zoho`
@@ -32,6 +33,7 @@ module.exports = defineConfig({
               refreshToken: process.env.ZOHO_PAYMENTS_REFRESH_TOKEN!,
               signingKey: process.env.ZOHO_PAYMENTS_SIGNING_KEY!,
               region: "in",
+              environment: "live",
               checkoutMode: "widget",
               apiKey: process.env.ZOHO_PAYMENTS_API_KEY!,
             },
@@ -62,6 +64,7 @@ names used by the README and `.env.example`; map them explicitly in
 | `ZOHO_PAYMENTS_SIGNING_KEY`   | `signingKey`    | Yes in production | Server-only secret; without it webhooks cannot be verified.                       |
 | `ZOHO_PAYMENTS_API_KEY`       | `apiKey`        | Widget mode       | Publishable browser key. Do not use the client secret here.                       |
 | `ZOHO_PAYMENTS_REGION`        | `region`        | No                | `in` (default) or `us`.                                                           |
+| `ZOHO_PAYMENTS_ENVIRONMENT`   | `environment`   | No                | `live` (default) or `sandbox` (India only).                                       |
 | `ZOHO_PAYMENTS_CHECKOUT_MODE` | `checkoutMode`  | No                | `widget` (default) or `hosted`.                                                   |
 | `ZOHO_PAYMENTS_SUCCESS_URL`   | `successUrl`    | Hosted mode       | Must be HTTPS in production.                                                      |
 | `ZOHO_PAYMENTS_FAILURE_URL`   | `failureUrl`    | Hosted mode       | Must be HTTPS in production.                                                      |
@@ -91,6 +94,7 @@ minted in the US data centre cannot authorize an India account, and vice versa.
 | Option         | Type                   | Default    | Validation                                               |
 | -------------- | ---------------------- | ---------- | -------------------------------------------------------- |
 | `region`       | `"in" \| "us"`         | `"in"`     | Exact match; any other value throws at startup.          |
+| `environment`  | `"live" \| "sandbox"`  | `"live"`   | Sandbox is supported only with `region: "in"`.           |
 | `checkoutMode` | `"widget" \| "hosted"` | `"widget"` | Exact match; any other value throws at startup.          |
 | `apiKey`       | `string`               | —          | Required when `checkoutMode` is `"widget"`. Publishable. |
 | `successUrl`   | `string`               | —          | Required when `checkoutMode` is `"hosted"`.              |
@@ -205,16 +209,16 @@ A custom `logger` must be a structured logger:
 
 ## 4. Region matrix
 
-| Setting         | India (`region: "in"`)                                    | US (`region: "us"`)                        |
-| --------------- | --------------------------------------------------------- | ------------------------------------------ |
-| Default         | Yes                                                       | Opt-in                                     |
-| Payments API    | `https://payments.zoho.in/api/v1`                         | `https://payments.zoho.com/api/v1`         |
-| OAuth accounts  | `https://accounts.zoho.in`                                | `https://accounts.zoho.com`                |
-| Hosted checkout | `https://payments.zoho.in/hostedcheckout`                 | `https://payments.zoho.com/hostedcheckout` |
-| Widget domain   | `IN`                                                      | `US`                                       |
-| Widget script   | `https://static.zohocdn.com/zpay/zpay-js/v1/zpayments.js` | Same                                       |
-| Webhooks        | Yes                                                       | Yes                                        |
-| Refunds         | Yes                                                       | Yes                                        |
+| Setting         | India live (`region: "in"`)                               | India sandbox (`environment: "sandbox"`)         | US live (`region: "us"`)                   |
+| --------------- | --------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------ |
+| Default         | Yes                                                       | Opt-in                                           | Opt-in                                     |
+| Payments API    | `https://payments.zoho.in/api/v1`                         | `https://paymentssandbox.zoho.in/api/v1`         | `https://payments.zoho.com/api/v1`         |
+| OAuth accounts  | `https://accounts.zoho.in`                                | `https://accounts.zoho.in`                       | `https://accounts.zoho.com`                |
+| Hosted checkout | `https://payments.zoho.in/hostedcheckout`                 | `https://paymentssandbox.zoho.in/hostedcheckout` | `https://payments.zoho.com/hostedcheckout` |
+| Widget domain   | `IN`                                                      | `IN`                                             | `US`                                       |
+| Widget script   | `https://static.zohocdn.com/zpay/zpay-js/v1/zpayments.js` | Same                                             |
+| Webhooks        | Yes                                                       | Yes                                              |
+| Refunds         | Yes                                                       | Yes                                              |
 
 The Zoho account, OAuth client, refresh token, and `region` must agree. A mismatch
 usually produces `invalid_client`, `invalid_grant`, or a `401`/`403` from the Payments
@@ -236,6 +240,7 @@ are identical.
     refreshToken: process.env.ZOHO_PAYMENTS_REFRESH_TOKEN!,
     signingKey: process.env.ZOHO_PAYMENTS_SIGNING_KEY!,
     region: "in",
+    environment: "live",
     checkoutMode: "hosted",
     successUrl: "https://storefront.example.com/checkout/success",
     failureUrl: "https://storefront.example.com/checkout?payment=failed",
