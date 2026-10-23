@@ -64,9 +64,9 @@ Install the package in your Medusa application:
 npm i medusa-payment-zoho
 ```
 
-> **Release status:** the `1.0.0` release is being prepared in this repository. The
-> command above is the intended consumption path once the package is published. Until
-> then, install the tarball produced by `pnpm pack` or reference your local checkout.
+> **Release status:** `medusa-payment-zoho` is published on npm. Install the latest
+> release with the command above. The repository also contains the full test suite,
+> source, and release verification so you can audit the exact tarball you install.
 
 Using pnpm or yarn works too; the package ships ESM and CommonJS builds with TypeScript
 declarations.

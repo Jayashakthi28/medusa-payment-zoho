@@ -5,6 +5,19 @@ All notable changes to `medusa-payment-zoho` are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-10-23
+
+### Fixed
+
+- Release automation now treats npm registry propagation as advisory after a successful
+  `npm publish`, so a transient registry 404 cannot mark a published release as failed.
+
+### Documentation
+
+- Documented the token bootstrap plus npm Trusted Publishing migration path.
+- Corrected the hosted-checkout signature description to include India’s `mandate_id`
+  field and the US layout fallback.
+
 ## [1.0.0] - 2026-10-23
 
 Initial release of the Zoho Payments provider for Medusa v2.
@@ -30,8 +43,8 @@ Initial release of the Zoho Payments provider for Medusa v2.
 - Per-attempt `payment.failed` reconciliation against the Zoho session, so a later
   successful attempt does not fail the order.
 - Three signature helpers: webhook (`${t}.${rawBody}`), widget
-  (`${paymentId}|${paymentSessionId}`), and hosted checkout (ten dot-joined fields with
-  empty strings for absent optionals).
+  (`${paymentId}|${paymentSessionId}`), and hosted checkout (India’s eleven dot-joined fields with `mandate_id`, or the US
+  ten-field layout, with empty strings for absent optionals).
 - OAuth 2.0 org refresh-token support with in-memory caching, single-flight refresh,
   one retry on `401`, and retryable-versus-terminal error classification.
 - HTTP retry policy with `Retry-After` support: safe calls retry network/`429`/`5xx`;
@@ -73,4 +86,5 @@ Initial release of the Zoho Payments provider for Medusa v2.
 - One provider instance maps to one Zoho account; multi-account routing is not built in.
 - There is no durable webhook `event_id` store in this release.
 
+[1.0.1]: https://github.com/Jayashakthi28/medusa-payment-zoho/releases/tag/v1.0.1
 [1.0.0]: https://github.com/Jayashakthi28/medusa-payment-zoho/releases/tag/v1.0.0

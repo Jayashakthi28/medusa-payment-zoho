@@ -4,7 +4,7 @@ This file is the handoff record for the project. Update it before every commit.
 
 ## Status
 
-- Current wave: **complete — v1.0.0 release candidate**
+- Current wave: **complete — v1.0.1 release**
 - Overall: implementation, tests, docs, packaging, graph and audit complete
 - Last updated: 2026-10-23
 - Tests: **755 passing**, 100% lines/branches/functions/statements
@@ -49,16 +49,19 @@ This file is the handoff record for the project. Update it before every commit.
 
 - `pnpm check` passes from a clean tree: lint, format, typecheck, 755 tests at 100%
   coverage, build, pack check, and packed-consumer import verification.
-- Annotated tag `v1.0.0` points at the release commit.
+- `1.0.0` is published on npm with provenance.
+- Annotated tag `v1.0.1` points at the release-automation patch.
 - Graphify graph, report, curated labels, and manifest are committed.
 - Nothing has been pushed and no npm package has been published. Those are deliberate
   maintainer actions, documented in `docs/publishing.md`.
 
 ## Remaining maintainer actions
 
-1. Review the local history and push when ready.
-2. Authenticate to npm and publish the tagged release with provenance.
-3. Run `scripts/smoke.mjs` against a real Zoho merchant account before live traffic.
+1. Confirm the `v1.0.1` release workflow is green after pushing the tag.
+2. Configure npm Trusted Publishing for `Jayashakthi28/medusa-payment-zoho` and
+   `release.yml`, then remove `NPM_TOKEN` for future releases.
+3. Deprecate the `0.0.0-stage` bootstrap version if it is not intentional.
+4. Run `scripts/smoke.mjs` against a real Zoho merchant account before live traffic.
 
 ## Commit log
 
@@ -68,3 +71,4 @@ This file is the handoff record for the project. Update it before every commit.
 - `5f4fb28` — `chore: add CI, release and package verification workflows`
 - `4fed70d` — `docs: add graphify map and finalize handoff`
 - `051dc48` — `chore: refresh graphify graph and labels`
+- `242cbca` — `chore: align repository metadata and harden npm release`

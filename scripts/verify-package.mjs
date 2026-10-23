@@ -15,7 +15,9 @@ import { fileURLToPath } from "node:url"
 
 const SCRIPT_DIRECTORY = dirname(fileURLToPath(import.meta.url))
 const REPOSITORY_ROOT = resolve(SCRIPT_DIRECTORY, "..")
-const EXPECTED_VERSION = "1.0.0"
+const EXPECTED_VERSION = JSON.parse(
+  readFileSync(join(REPOSITORY_ROOT, "package.json"), "utf8")
+).version
 const FRAMEWORK_VERSION = "2.22.0"
 const NPM_COMMAND = process.platform === "win32" ? "npm.cmd" : "npm"
 const MAX_OUTPUT_LENGTH = 8_000
